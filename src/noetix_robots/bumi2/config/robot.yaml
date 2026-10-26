@@ -1,0 +1,472 @@
+robot:
+  name: bumi2
+  dof: 21
+
+  joint_order:
+    - waist_yaw_joint
+
+    - l_arm_pitch_joint
+    - l_arm_roll_joint
+    - l_arm_yaw_joint
+    - l_elbow_pitch_joint
+
+    - r_arm_pitch_joint
+    - r_arm_roll_joint
+    - r_arm_yaw_joint
+    - r_elbow_pitch_joint
+
+    - l_leg_pitch_joint
+    - l_leg_roll_joint
+    - l_leg_yaw_joint
+    - l_knee_pitch_joint
+    - l_ankle_pitch_joint
+    - l_ankle_roll_joint
+
+    - r_leg_pitch_joint
+    - r_leg_roll_joint
+    - r_leg_yaw_joint
+    - r_knee_pitch_joint
+    - r_ankle_pitch_joint
+    - r_ankle_roll_joint
+
+  frames:
+    base: base_link
+    imu: base_imu
+
+  description:
+    real: urdf/bumi2_21dof.urdf
+
+  visualization:
+    real_rviz: rviz/bumi2_real.rviz
+
+
+# ============================================================================
+# Joint -> actuator mapping
+#
+# Bumi2 现在统一使用相同名称：
+#
+#   policy joint
+#   URDF joint
+#   robot actuator
+#   hardware actuator
+#
+# 四层保持一致，避免多余名称转换。
+#
+# 实际电机方向由 hardware.yaml 中 actuator_list.direction 处理。
+# 所以这里 direction 统一为 1。
+# ============================================================================
+
+joints:
+
+  # --------------------------------------------------------------------------
+  # Waist
+  # --------------------------------------------------------------------------
+
+  - name: waist_yaw_joint
+    actuator: waist_yaw_joint
+    direction: 1
+    offset: 0.0
+
+
+  # --------------------------------------------------------------------------
+  # Left arm
+  # --------------------------------------------------------------------------
+
+  - name: l_arm_pitch_joint
+    actuator: l_arm_pitch_joint
+    direction: 1
+    offset: 0.0
+
+  - name: l_arm_roll_joint
+    actuator: l_arm_roll_joint
+    direction: 1
+    offset: 0.0
+
+  - name: l_arm_yaw_joint
+    actuator: l_arm_yaw_joint
+    direction: 1
+    offset: 0.0
+
+  - name: l_elbow_pitch_joint
+    actuator: l_elbow_pitch_joint
+    direction: 1
+    offset: 0.0
+
+
+  # --------------------------------------------------------------------------
+  # Right arm
+  # --------------------------------------------------------------------------
+
+  - name: r_arm_pitch_joint
+    actuator: r_arm_pitch_joint
+    direction: 1
+    offset: 0.0
+
+  - name: r_arm_roll_joint
+    actuator: r_arm_roll_joint
+    direction: 1
+    offset: 0.0
+
+  - name: r_arm_yaw_joint
+    actuator: r_arm_yaw_joint
+    direction: 1
+    offset: 0.0
+
+  - name: r_elbow_pitch_joint
+    actuator: r_elbow_pitch_joint
+    direction: 1
+    offset: 0.0
+
+
+  # --------------------------------------------------------------------------
+  # Left leg
+  # --------------------------------------------------------------------------
+
+  - name: l_leg_pitch_joint
+    actuator: l_leg_pitch_joint
+    direction: 1
+    offset: 0.0
+
+  - name: l_leg_roll_joint
+    actuator: l_leg_roll_joint
+    direction: 1
+    offset: 0.0
+
+  - name: l_leg_yaw_joint
+    actuator: l_leg_yaw_joint
+    direction: 1
+    offset: 0.0
+
+  - name: l_knee_pitch_joint
+    actuator: l_knee_pitch_joint
+    direction: 1
+    offset: 0.0
+
+  - name: l_ankle_pitch_joint
+    actuator: l_ankle_pitch_joint
+    direction: 1
+    offset: 0.0
+
+  - name: l_ankle_roll_joint
+    actuator: l_ankle_roll_joint
+    direction: 1
+    offset: 0.0
+
+
+  # --------------------------------------------------------------------------
+  # Right leg
+  # --------------------------------------------------------------------------
+
+  - name: r_leg_pitch_joint
+    actuator: r_leg_pitch_joint
+    direction: 1
+    offset: 0.0
+
+  - name: r_leg_roll_joint
+    actuator: r_leg_roll_joint
+    direction: 1
+    offset: 0.0
+
+  - name: r_leg_yaw_joint
+    actuator: r_leg_yaw_joint
+    direction: 1
+    offset: 0.0
+
+  - name: r_knee_pitch_joint
+    actuator: r_knee_pitch_joint
+    direction: 1
+    offset: 0.0
+
+  - name: r_ankle_pitch_joint
+    actuator: r_ankle_pitch_joint
+    direction: 1
+    offset: 0.0
+
+  - name: r_ankle_roll_joint
+    actuator: r_ankle_roll_joint
+    direction: 1
+    offset: 0.0
+
+# ============================================================================
+# Robot-local pose modes
+#
+# These values are consumed directly by noetix_pose_mode_node.
+# pos is the logical joint target in rad. vel is rad/s. ff is the feedforward
+# torque value passed to LowCmd.tau. kp/kd are the gains sent to the actuator.
+# The node interpolates from the measured position to pos over duration_s, then
+# keeps publishing the final command until another controller takes ownership.
+# ============================================================================
+
+lie_control:
+  kp: 10.0
+  kd: 0.5
+  kd_ankle_roll: 0.2
+  vel: 0.0
+  ff: 0.0
+  duration_s: 2.0
+  publish_hz: 500.0
+
+stand_control:
+  kp: 10.0
+  kd: 0.5
+  kd_ankle_roll: 0.2
+  vel: 0.0
+  ff: 0.0
+  duration_s: 2.0
+  publish_hz: 500.0
+
+lie_joint_angles:
+  - name: l_leg_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_leg_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: waist_yaw_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_leg_roll_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_leg_roll_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_arm_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_arm_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_leg_yaw_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_leg_yaw_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_arm_roll_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_arm_roll_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_knee_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_knee_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_arm_yaw_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_arm_yaw_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_ankle_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_ankle_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_elbow_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_elbow_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_ankle_roll_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.2
+    ff: 0.0
+  - name: r_ankle_roll_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.2
+    ff: 0.0
+
+stand_joint_angles:
+  - name: l_leg_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_leg_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: waist_yaw_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_leg_roll_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_leg_roll_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_arm_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_arm_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_leg_yaw_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_leg_yaw_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_arm_roll_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_arm_roll_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_knee_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_knee_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_arm_yaw_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_arm_yaw_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_ankle_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_ankle_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_elbow_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: r_elbow_pitch_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.5
+    ff: 0.0
+  - name: l_ankle_roll_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.2
+    ff: 0.0
+  - name: r_ankle_roll_joint
+    pos: 0.0
+    vel: 0.0
+    kp: 10.0
+    kd: 0.2
+    ff: 0.0

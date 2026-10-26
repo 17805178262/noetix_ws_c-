@@ -1,0 +1,149 @@
+hardware:
+  vendor_robot_model: bumi1
+actuator_list:
+- name: arm_l1_joint
+  direction: -1
+  bias: 0.0
+- name: arm_l2_joint
+  direction: -1
+  bias: 0.0
+- name: arm_l3_joint
+  direction: 1
+  bias: 0.0
+- name: arm_l4_joint
+  direction: -1
+  bias: 0.0
+- name: leg_l1_joint
+  direction: 1
+  bias: 0.0
+- name: leg_l2_joint
+  direction: 1
+  bias: 0.0
+- name: leg_l3_joint
+  direction: 1
+  bias: 0.0
+- name: leg_l4_joint
+  direction: 1
+  bias: 0.0
+- name: leg_l5_joint
+  direction: -1
+  bias: 0.0
+- name: leg_l6_joint
+  direction: 1
+  bias: 0.0
+- name: arm_r1_joint
+  direction: 1
+  bias: 0.0
+- name: arm_r2_joint
+  direction: -1
+  bias: 0.0
+- name: arm_r3_joint
+  direction: 1
+  bias: 0.0
+- name: arm_r4_joint
+  direction: 1
+  bias: 0.0
+- name: leg_r1_joint
+  direction: -1
+  bias: 0.0
+- name: leg_r2_joint
+  direction: 1
+  bias: 0.0
+- name: leg_r3_joint
+  direction: 1
+  bias: 0.0
+- name: leg_r4_joint
+  direction: -1
+  bias: 0.0
+- name: leg_r5_joint
+  direction: 1
+  bias: 0.0
+- name: leg_r6_joint
+  direction: -1
+  bias: 0.0
+- name: waist_1_joint
+  direction: 1
+  bias: 0.0
+parallel_ankle:
+  motor_offset_rad: 0.2618
+  left:
+    pitch: leg_l5_joint
+    roll: leg_l6_joint
+  right:
+    pitch: leg_r5_joint
+    roll: leg_r6_joint
+canu_network:
+- name: body
+  ecat_id: 1
+  enable: true
+  channel_1:
+  - name: waist_1_joint
+    type: ACTR_4340
+    can_id: 1
+  channel_2:
+  - name: arm_l1_joint
+    type: ACTR_RS05
+    can_id: 1
+  - name: arm_l2_joint
+    type: ACTR_RS05
+    can_id: 2
+  - name: arm_l3_joint
+    type: ACTR_RS05
+    can_id: 3
+  - name: arm_l4_joint
+    type: ACTR_RS05
+    can_id: 4
+  channel_3:
+  - name: leg_l1_joint
+    type: ACTR_4315
+    can_id: 1
+  - name: leg_l2_joint
+    type: ACTR_4315
+    can_id: 2
+  - name: leg_l3_joint
+    type: ACTR_4325
+    can_id: 3
+  - name: leg_l4_joint
+    type: ACTR_4315
+    can_id: 4
+  - name: leg_l5_joint
+    type: ACTR_4325
+    can_id: 5
+  - name: leg_l6_joint
+    type: ACTR_4325
+    can_id: 6
+- name: hip
+  ecat_id: 2
+  enable: true
+  channel_2:
+  - name: arm_r1_joint
+    type: ACTR_RS05
+    can_id: 1
+  - name: arm_r2_joint
+    type: ACTR_RS05
+    can_id: 2
+  - name: arm_r3_joint
+    type: ACTR_RS05
+    can_id: 3
+  - name: arm_r4_joint
+    type: ACTR_RS05
+    can_id: 4
+  channel_3:
+  - name: leg_r1_joint
+    type: ACTR_4315
+    can_id: 1
+  - name: leg_r2_joint
+    type: ACTR_4315
+    can_id: 2
+  - name: leg_r3_joint
+    type: ACTR_4325
+    can_id: 3
+  - name: leg_r4_joint
+    type: ACTR_4315
+    can_id: 4
+  - name: leg_r5_joint
+    type: ACTR_4325
+    can_id: 5
+  - name: leg_r6_joint
+    type: ACTR_4325
+    can_id: 6

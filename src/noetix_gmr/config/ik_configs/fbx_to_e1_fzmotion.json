@@ -1,0 +1,476 @@
+{
+    "robot_root_name": "base_link",
+    "human_root_name": "Hips",
+    "ground_height": 0.0,
+    "human_height_assumption": 1.8,
+    "use_ik_match_table1": true,
+    "use_ik_match_table2": true,
+    "human_scale_table": {
+        "Hips": 0.9,
+        "Spine1": 0.9,
+        "LeftUpLeg": 0.9,
+        "RightUpLeg": 0.9,
+        "LeftLeg": 0.9,
+        "RightLeg": 0.9,
+        "LeftToeBase": 0.9,
+        "RightToeBase": 0.9,
+        "LeftArm": 0.38,
+        "RightArm": 0.38,
+        "LeftForeArm": 0.38,
+        "RightForeArm": 0.38,
+        "LeftHand": 0.38,
+        "RightHand": 0.38
+    },
+    "ik_match_table1": {
+        "base_link": [
+            "Hips",
+            0,
+            10,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70710678,
+                0.0,
+                0.0,
+                -0.70710678
+            ]
+        ],
+        "l_leg_hip_pitch_link": [
+            "LeftUpLeg",
+            0,
+            10,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70043778,
+                -0.09688608,
+                -0.09688608,
+                -0.70043778
+            ]
+        ],
+        "l_leg_knee_link": [
+            "LeftLeg",
+            0,
+            10,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70710678,
+                0.0,
+                0.0,
+                -0.70710678
+            ]
+        ],
+        "l_leg_ankle_roll_link": [
+            "LeftToeBase",
+            100,
+            50,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70710678,
+                0.0,
+                0.0,
+                -0.70710678
+            ]
+        ],
+        "r_leg_hip_pitch_link": [
+            "RightUpLeg",
+            0,
+            10,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70043778,
+                -0.09688608,
+                -0.09688608,
+                -0.70043778
+            ]
+        ],
+        "r_leg_knee_link": [
+            "RightLeg",
+            0,
+            10,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70710678,
+                0.0,
+                0.0,
+                -0.70710678
+            ]
+        ],
+        "r_leg_ankle_roll_link": [
+            "RightToeBase",
+            100,
+            50,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70710678,
+                0.0,
+                0.0,
+                -0.70710678
+            ]
+        ],
+        "waist_roll_link": [
+            "Spine1",
+            0,
+            10,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70710678,
+                0.0,
+                0.0,
+                -0.70710678
+            ]
+        ],
+        "l_arm_shoulder_roll_link": [
+            "LeftArm",
+            0,
+            10,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.5,
+                0.5,
+                -0.5,
+                -0.5
+            ]
+        ],
+        "l_arm_elbow_pitch_link": [
+            "LeftForeArm",
+            0,
+            10,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.5,
+                0.5,
+                -0.5,
+                -0.5
+            ]
+        ],
+        "l_arm_elbow_yaw_link": [
+            "LeftHand",
+            0,
+            10,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.5,
+                0.5,
+                -0.5,
+                -0.5
+            ]
+        ],
+        "r_arm_shoulder_roll_link": [
+            "RightArm",
+            0,
+            10,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.5,
+                -0.5,
+                0.5,
+                -0.5
+            ]
+        ],
+        "r_arm_elbow_pitch_link": [
+            "RightForeArm",
+            0,
+            10,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.5,
+                -0.5,
+                0.5,
+                -0.5
+            ]
+        ],
+        "r_arm_elbow_yaw_link": [
+            "RightHand",
+            0,
+            10,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.5,
+                -0.5,
+                0.5,
+                -0.5
+            ]
+        ]
+    },
+    "ik_match_table2": {
+        "base_link": [
+            "Hips",
+            10,
+            5,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70710678,
+                0.0,
+                0.0,
+                -0.70710678
+            ]
+        ],
+        "l_leg_hip_pitch_link": [
+            "LeftUpLeg",
+            10,
+            5,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70043778,
+                -0.09688608,
+                -0.09688608,
+                -0.70043778
+            ]
+        ],
+        "l_leg_knee_link": [
+            "LeftLeg",
+            10,
+            5,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70710678,
+                0.0,
+                0.0,
+                -0.70710678
+            ]
+        ],
+        "l_leg_ankle_roll_link": [
+            "LeftToeBase",
+            100,
+            50,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70710678,
+                0.0,
+                0.0,
+                -0.70710678
+            ]
+        ],
+        "r_leg_hip_pitch_link": [
+            "RightUpLeg",
+            10,
+            5,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70043778,
+                -0.09688608,
+                -0.09688608,
+                -0.70043778
+            ]
+        ],
+        "r_leg_knee_link": [
+            "RightLeg",
+            10,
+            5,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70710678,
+                0.0,
+                0.0,
+                -0.70710678
+            ]
+        ],
+        "r_leg_ankle_roll_link": [
+            "RightToeBase",
+            100,
+            50,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70710678,
+                0.0,
+                0.0,
+                -0.70710678
+            ]
+        ],
+        "waist_roll_link": [
+            "Spine1",
+            10,
+            5,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.70710678,
+                0.0,
+                0.0,
+                -0.70710678
+            ]
+        ],
+        "l_arm_shoulder_roll_link": [
+            "LeftArm",
+            10,
+            5,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.5,
+                0.5,
+                -0.5,
+                -0.5
+            ]
+        ],
+        "l_arm_elbow_pitch_link": [
+            "LeftForeArm",
+            10,
+            5,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.5,
+                0.5,
+                -0.5,
+                -0.5
+            ]
+        ],
+        "l_arm_elbow_yaw_link": [
+            "LeftHand",
+            10,
+            5,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.5,
+                0.5,
+                -0.5,
+                -0.5
+            ]
+        ],
+        "r_arm_shoulder_roll_link": [
+            "RightArm",
+            10,
+            5,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.5,
+                -0.5,
+                0.5,
+                -0.5
+            ]
+        ],
+        "r_arm_elbow_pitch_link": [
+            "RightForeArm",
+            10,
+            5,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.5,
+                -0.5,
+                0.5,
+                -0.5
+            ]
+        ],
+        "r_arm_elbow_yaw_link": [
+            "RightHand",
+            10,
+            5,
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.5,
+                -0.5,
+                0.5,
+                -0.5
+            ]
+        ]
+    }
+}

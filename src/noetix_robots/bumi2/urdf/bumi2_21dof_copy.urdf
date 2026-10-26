@@ -1,0 +1,787 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="bumi2">
+  <link name="base_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/base_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.698039215686274 0.698039215686274 0.698039215686274 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.00 0.0 0.05" rpy="1.57 0 0" />
+      <geometry>
+        <cylinder radius="0.06" length="0.12" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="-1.530000e-04 8.000000e-06 4.870200e-02" />
+      <mass value="2.225273e+00" />
+      <inertia ixx="5.799676e-03" ixy="2.180161e-06" ixz="8.422360e-06" iyy="2.853979e-03" iyz="1.781720e-07" izz="5.442354e-03" />
+    </inertial>
+  </link>
+  <joint name="base_imu_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0" />
+    <parent link="base_link" />
+    <child link="base_imu" />
+  </joint>
+  <link name="base_imu">
+    <inertial>
+      <mass value="0.01" />
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <inertia ixx="0.000001" ixy="0" ixz="0" iyy="0.000001" iyz="0" izz="0.000001" />
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <box size="0.015 0.015 0.004" />
+      </geometry>
+      <material name="orange">
+        <color rgba="1 0.423529 0.039216 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="waist_yaw_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/waist_yaw_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.69804 0.69804 0.69804 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.000 0.2" rpy="0 0 0" />
+      <geometry>
+        <box size="0.16 0.18 0.4" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="-3.320000e-03 1.080000e-03 1.303340e-01" />
+      <mass value="6.396710e+00" />
+      <inertia ixx="8.627566e-02" ixy="-2.459144e-04" ixz="-2.485653e-03" iyy="7.847983e-02" iyz="-1.910138e-03" izz="2.404053e-02" />
+    </inertial>
+  </link>
+  <joint name="waist_yaw_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 0.1373" />
+    <parent link="base_link" />
+    <child link="waist_yaw_link" />
+    <axis xyz="0 0 1" />
+    <limit effort="54" lower="-1.5707" upper="1.5707" velocity="13.8576" />
+  </joint>
+  <link name="l_arm_pitch_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/l_arm_pitch_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="-1.460000e-03 4.799800e-02 3.900000e-05" />
+      <mass value="5.118270e-01" />
+      <inertia ixx="3.122329e-04" ixy="1.705287e-06" ixz="-1.713870e-06" iyy="2.700972e-04" iyz="-1.809193e-06" izz="3.652898e-04" />
+    </inertial>
+  </link>
+  <joint name="l_arm_pitch_joint" type="revolute">
+    <origin rpy="0.26182 0 0" xyz="0.0016683 0.092185 0.16892" />
+    <parent link="waist_yaw_link" />
+    <child link="l_arm_pitch_link" />
+    <axis xyz="0 1 0" />
+    <limit effort="22" lower="-3.1415" upper="1.5707" velocity="15.9991" />
+  </joint>
+  <link name="l_arm_roll_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/l_arm_roll_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/l_arm_roll_link.STL" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="1.085000e-03 1.973200e-02 -6.536900e-02" />
+      <mass value="6.535600e-01" />
+      <inertia ixx="8.582227e-04" ixy="1.626763e-05" ixz="-5.484534e-05" iyy="9.373415e-04" iyz="8.764957e-05" izz="4.252699e-04" />
+    </inertial>
+  </link>
+  <joint name="l_arm_roll_joint" type="revolute">
+    <origin rpy="-0.26182 0 0" xyz="-0.0016687 0.05466 -6.5926E-05" />
+    <parent link="l_arm_pitch_link" />
+    <child link="l_arm_roll_link" />
+    <axis xyz="1 0 0" />
+    <limit effort="22" lower="-0.0872" upper="2.1816" velocity="15.9991" />
+  </joint>
+  <link name="l_arm_yaw_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/l_arm_yaw_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="7.017000e-03 1.221000e-03 -6.935200e-02" />
+      <mass value="4.791690e-01" />
+      <inertia ixx="3.649351e-04" ixy="2.054860e-07" ixz="3.558320e-05" iyy="3.423721e-04" iyz="4.134504e-06" izz="2.327616e-04" />
+    </inertial>
+  </link>
+  <joint name="l_arm_yaw_joint" type="revolute">
+    <origin rpy="0.087266 0 0" xyz="0 0.023406 -0.095423" />
+    <parent link="l_arm_roll_link" />
+    <child link="l_arm_yaw_link" />
+    <axis xyz="0 0 1" />
+    <limit effort="22" lower="-1.5707" upper="1.5707" velocity="15.9991" />
+  </joint>
+  <link name="l_elbow_pitch_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/l_elbow_pitch_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/l_elbow_pitch_link.STL" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="-3.520000e-04 7.420000e-04 -9.714800e-02" />
+      <mass value="4.882590e-01" />
+      <inertia ixx="2.076288e-03" ixy="5.346283e-06" ixz="3.839319e-05" iyy="1.995639e-03" iyz="2.326722e-05" izz="3.113681e-04" />
+    </inertial>
+  </link>
+  <joint name="l_elbow_pitch_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0.010001 0 -0.077898" />
+    <parent link="l_arm_yaw_link" />
+    <child link="l_elbow_pitch_link" />
+    <axis xyz="0 1 0" />
+    <limit effort="22" lower="-2.2689" upper="0" velocity="15.9991" />
+  </joint>
+  <link name="r_arm_pitch_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/r_arm_pitch_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.69804 0.69804 0.69804 1" />
+      </material>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="-1.640000e-04 -4.799700e-02 1.030000e-04" />
+      <mass value="5.118480e-01" />
+      <inertia ixx="3.122527e-04" ixy="-1.708024e-06" ixz="-1.719285e-06" iyy="2.701154e-04" iyz="1.799799e-06" izz="3.653100e-04" />
+    </inertial>
+  </link>
+  <joint name="r_arm_pitch_joint" type="revolute">
+    <origin rpy="-0.26182 0 0" xyz="0.00037181 -0.092201 0.16886" />
+    <parent link="waist_yaw_link" />
+    <child link="r_arm_pitch_link" />
+    <axis xyz="0 1 0" />
+    <limit effort="22" lower="-3.1415" upper="1.5707" velocity="15.9991" />
+  </joint>
+  <link name="r_arm_roll_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/r_arm_roll_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.69804 0.69804 0.69804 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/r_arm_roll_link.STL" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="1.084000e-03 -1.972800e-02 -6.536500e-02" />
+      <mass value="6.536200e-01" />
+      <inertia ixx="8.583572e-04" ixy="-1.627707e-05" ixz="-5.482011e-05" iyy="9.375493e-04" iyz="-8.772778e-05" izz="4.253874e-04" />
+    </inertial>
+  </link>
+  <joint name="r_arm_roll_joint" type="revolute">
+    <origin rpy="0.26182 0 0" xyz="-0.00037215 -0.05466 0" />
+    <parent link="r_arm_pitch_link" />
+    <child link="r_arm_roll_link" />
+    <axis xyz="1 0 0" />
+    <limit effort="22" lower="-2.1816" upper="0.0872" velocity="15.9991" />
+  </joint>
+  <link name="r_arm_yaw_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/r_arm_yaw_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.69804 0.69804 0.69804 1" />
+      </material>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="7.017000e-03 -1.221000e-03 -6.935100e-02" />
+      <mass value="4.791640e-01" />
+      <inertia ixx="3.649326e-04" ixy="-2.064760e-07" ixz="3.558213e-05" iyy="3.423724e-04" iyz="-4.140970e-06" izz="2.327634e-04" />
+    </inertial>
+  </link>
+  <joint name="r_arm_yaw_joint" type="revolute">
+    <origin rpy="-0.087266 0 0" xyz="0 -0.023406 -0.095423" />
+    <parent link="r_arm_roll_link" />
+    <child link="r_arm_yaw_link" />
+    <axis xyz="0 0 1" />
+    <limit effort="22" lower="-1.5707" upper="1.5707" velocity="15.9991" />
+  </joint>
+  <link name="r_elbow_pitch_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/r_elbow_pitch_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.69804 0.69804 0.69804 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/r_elbow_pitch_link.STL" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="-3.530000e-04 -7.380000e-04 -9.714800e-02" />
+      <mass value="4.882460e-01" />
+      <inertia ixx="2.076196e-03" ixy="-5.356477e-06" ixz="3.843210e-05" iyy="1.995542e-03" iyz="-2.326952e-05" izz="3.113614e-04" />
+    </inertial>
+  </link>
+  <joint name="r_elbow_pitch_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0.010001 0 -0.077898" />
+    <parent link="r_arm_yaw_link" />
+    <child link="r_elbow_pitch_link" />
+    <axis xyz="0 1 0" />
+    <limit effort="22" lower="-2.2689" upper="0" velocity="15.9991" />
+  </joint>
+  <link name="l_leg_pitch_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/l_leg_pitch_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.00 -0.18 -0.0" rpy="1.57 0 0" />
+      <geometry>
+        <cylinder radius="0.05" length="0.04" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="3.632000e-03 3.155100e-02 -4.499700e-02" />
+      <mass value="9.635120e-01" />
+      <inertia ixx="1.410858e-03" ixy="-2.333958e-05" ixz="4.776853e-05" iyy="1.503484e-03" iyz="2.355978e-04" izz="8.454018e-04" />
+    </inertial>
+  </link>
+  <joint name="l_leg_pitch_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0.063 0.0438" />
+    <parent link="base_link" />
+    <child link="l_leg_pitch_link" />
+    <axis xyz="0 1 0" />
+    <limit effort="54" lower="-2.0943" upper="2.0943" velocity="13.8576" />
+  </joint>
+  <link name="l_leg_roll_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/l_leg_roll_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.000 -0.000 -0.06" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.04" length="0.08" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="6.790000e-04 1.000000e-05 -6.036300e-02" />
+      <mass value="9.138560e-01" />
+      <inertia ixx="1.576003e-03" ixy="-7.177600e-08" ixz="5.185638e-05" iyy="1.891442e-03" iyz="-1.939267e-05" izz="1.103591e-03" />
+    </inertial>
+  </link>
+  <joint name="l_leg_roll_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0.037 -0.06" />
+    <parent link="l_leg_pitch_link" />
+    <child link="l_leg_roll_link" />
+    <axis xyz="1 0 0" />
+    <limit effort="54" lower="-0.6108" upper="1.4835" velocity="13.8576" />
+  </joint>
+  <link name="l_leg_yaw_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/l_leg_yaw_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="1.177000e-02 -3.653000e-03 -5.248900e-02" />
+      <mass value="3.294970e-01" />
+      <inertia ixx="6.080717e-04" ixy="-7.510725e-06" ixz="-2.714538e-05" iyy="4.059325e-04" iyz="-2.790297e-05" izz="4.623768e-04" />
+    </inertial>
+  </link>
+  <joint name="l_leg_yaw_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 -0.102" />
+    <parent link="l_leg_roll_link" />
+    <child link="l_leg_yaw_link" />
+    <axis xyz="0 0 1" />
+    <limit effort="22" lower="-2.3561" upper="2.3561" velocity="15.9991" />
+  </joint>
+  <link name="l_knee_pitch_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/l_knee_pitch_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.001 -0.001 -0.1" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.04" length="0.18" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="5.787000e-03 -9.360000e-04 -7.563500e-02" />
+      <mass value="2.227725e+00" />
+      <inertia ixx="1.135742e-02" ixy="-1.625434e-05" ixz="4.732299e-04" iyy="1.151657e-02" iyz="1.742729e-04" izz="2.047366e-03" />
+    </inertial>
+  </link>
+  <joint name="l_knee_pitch_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 -0.087998" />
+    <parent link="l_leg_yaw_link" />
+    <child link="l_knee_pitch_link" />
+    <axis xyz="0 1 0" />
+    <limit effort="54" lower="0" upper="2.2689" velocity="13.8576" />
+  </joint>
+  <link name="l_ankle_pitch_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/l_ankle_pitch_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="-7.330000e-04 1.103000e-03 0.000000e+00" />
+      <mass value="7.140300e-02" />
+      <inertia ixx="6.807007e-06" ixy="-5.775100e-08" ixz="-3.770000e-10" iyy="1.214807e-05" iyz="-8.400000e-11" izz="1.042566e-05" />
+    </inertial>
+  </link>
+  <joint name="l_ankle_pitch_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 -0.22494" />
+    <parent link="l_knee_pitch_link" />
+    <child link="l_ankle_pitch_link" />
+    <axis xyz="0 1 0" />
+    <limit effort="26.4" lower="-0.5934" upper="0.6108" velocity="15.9991" />
+  </joint>
+  <link name="l_ankle_roll_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/l_ankle_roll_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision name="l_foot_support_00">
+      <origin rpy="0 0 0" xyz="-0.052 -0.0 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_0r1">
+      <origin rpy="0 0 0" xyz="-0.048 -0.02 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_0r2">
+      <origin rpy="0 0 0" xyz="-0.034 -0.032 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_0l1">
+      <origin rpy="0 0 0" xyz="-0.048 0.02 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_0l2">
+      <origin rpy="0 0 0" xyz="-0.034 0.032 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_1r">
+      <origin rpy="0 0 0" xyz="0.0 -0.04 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_1l">
+      <origin rpy="0 0 0" xyz="0.0 0.04 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_2r">
+      <origin rpy="0 0 0" xyz="0.035 -0.04 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_2l">
+      <origin rpy="0 0 0" xyz="0.035 0.04 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_3r">
+      <origin rpy="0 0 0" xyz="0.07 -0.04 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_3l">
+      <origin rpy="0 0 0" xyz="0.07 0.04 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_4r">
+      <origin rpy="0 0 0" xyz="0.095 -0.032 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_4l">
+      <origin rpy="0 0 0" xyz="0.095 0.032 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_55">
+      <origin rpy="0 0 0" xyz="0.108 0.0 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_5r1">
+      <origin rpy="0 0 0" xyz="0.104 -0.02 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="l_foot_support_5l1">
+      <origin rpy="0 0 0" xyz="0.104 0.02 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="2.630900e-02 -5.000000e-06 -2.630800e-02" />
+      <mass value="7.907610e-01" />
+      <inertia ixx="6.274331e-04" ixy="8.039700e-08" ixz="2.875765e-05" iyy="1.906972e-03" iyz="4.068000e-09" izz="2.203113e-03" />
+    </inertial>
+  </link>
+  <joint name="l_ankle_roll_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 0" />
+    <parent link="l_ankle_pitch_link" />
+    <child link="l_ankle_roll_link" />
+    <axis xyz="1 0 0" />
+    <limit effort="26.4" lower="-0.2617" upper="0.2617" velocity="15.9991" />
+  </joint>
+  <link name="r_leg_pitch_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/r_leg_pitch_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.69804 0.69804 0.69804 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.00 0.18 -0.0" rpy="-1.57 0 0" />
+      <geometry>
+        <cylinder radius="0.05" length="0.04" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="3.632000e-03 -3.155100e-02 -4.499700e-02" />
+      <mass value="9.635100e-01" />
+      <inertia ixx="1.410856e-03" ixy="2.333696e-05" ixz="4.777428e-05" iyy="1.503480e-03" iyz="-2.356002e-04" izz="8.454029e-04" />
+    </inertial>
+  </link>
+  <joint name="r_leg_pitch_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 -0.063 0.0438" />
+    <parent link="base_link" />
+    <child link="r_leg_pitch_link" />
+    <axis xyz="0 1 0" />
+    <limit effort="54" lower="-2.0943" upper="2.0943" velocity="13.8576" />
+  </joint>
+  <link name="r_leg_roll_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/r_leg_roll_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.69804 0.69804 0.69804 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.000 0.000 -0.06" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.04" length="0.08" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="6.780000e-04 -1.000000e-05 -6.036100e-02" />
+      <mass value="9.138900e-01" />
+      <inertia ixx="1.576141e-03" ixy="5.752400e-08" ixz="5.193844e-05" iyy="1.891654e-03" iyz="1.937526e-05" izz="1.103708e-03" />
+    </inertial>
+  </link>
+  <joint name="r_leg_roll_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 -0.037 -0.06" />
+    <parent link="r_leg_pitch_link" />
+    <child link="r_leg_roll_link" />
+    <axis xyz="1 0 0" />
+    <limit effort="54" lower="-1.4835" upper="0.6108" velocity="13.8576" />
+  </joint>
+  <link name="r_leg_yaw_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/r_leg_yaw_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.69804 0.69804 0.69804 1" />
+      </material>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="1.176600e-02 3.698000e-03 -5.249000e-02" />
+      <mass value="3.294210e-01" />
+      <inertia ixx="6.078832e-04" ixy="7.579845e-06" ixz="-2.717143e-05" iyy="4.058703e-04" iyz="2.801038e-05" izz="4.621576e-04" />
+    </inertial>
+  </link>
+  <joint name="r_leg_yaw_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 -0.102" />
+    <parent link="r_leg_roll_link" />
+    <child link="r_leg_yaw_link" />
+    <axis xyz="0 0 1" />
+    <limit effort="22" lower="-2.3561" upper="2.3561" velocity="15.9991" />
+  </joint>
+  <link name="r_knee_pitch_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/r_knee_pitch_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.69804 0.69804 0.69804 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.001 -0.001 -0.1" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.04" length="0.18" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="5.787000e-03 9.360000e-04 -7.563600e-02" />
+      <mass value="2.227665e+00" />
+      <inertia ixx="1.135710e-02" ixy="1.629198e-05" ixz="4.731171e-04" iyy="1.151621e-02" iyz="-1.743285e-04" izz="2.047312e-03" />
+    </inertial>
+  </link>
+  <joint name="r_knee_pitch_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 -0.087998" />
+    <parent link="r_leg_yaw_link" />
+    <child link="r_knee_pitch_link" />
+    <axis xyz="0 1 0" />
+    <limit effort="54" lower="0" upper="2.2689" velocity="13.8576" />
+  </joint>
+  <link name="r_ankle_pitch_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/r_ankle_pitch_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.89804 0.91765 0.92941 1" />
+      </material>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="-7.330000e-04 -1.103000e-03 0.000000e+00" />
+      <mass value="7.140300e-02" />
+      <inertia ixx="6.807007e-06" ixy="5.775100e-08" ixz="-3.660000e-10" iyy="1.214807e-05" iyz="7.600000e-11" izz="1.042566e-05" />
+    </inertial>
+  </link>
+  <joint name="r_ankle_pitch_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 -0.22494" />
+    <parent link="r_knee_pitch_link" />
+    <child link="r_ankle_pitch_link" />
+    <axis xyz="0 1 0" />
+    <limit effort="26.4" lower="-0.5934" upper="0.6108" velocity="15.9991" />
+  </joint>
+  <link name="r_ankle_roll_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://noetix_robots/bumi2/meshes/r_ankle_roll_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.89804 0.91765 0.92941 1" />
+      </material>
+    </visual>
+    <collision name="r_foot_support_00">
+      <origin rpy="0 0 0" xyz="-0.052 -0.0 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_0r1">
+      <origin rpy="0 0 0" xyz="-0.048 -0.02 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_0r2">
+      <origin rpy="0 0 0" xyz="-0.034 -0.032 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_0l1">
+      <origin rpy="0 0 0" xyz="-0.048 0.02 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_0l2">
+      <origin rpy="0 0 0" xyz="-0.034 0.032 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_1r">
+      <origin rpy="0 0 0" xyz="0.0 -0.04 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_1l">
+      <origin rpy="0 0 0" xyz="0.0 0.04 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_2r">
+      <origin rpy="0 0 0" xyz="0.035 -0.04 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_2l">
+      <origin rpy="0 0 0" xyz="0.035 0.04 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_3r">
+      <origin rpy="0 0 0" xyz="0.07 -0.04 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_3l">
+      <origin rpy="0 0 0" xyz="0.07 0.04 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_4r">
+      <origin rpy="0 0 0" xyz="0.095 -0.032 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_4l">
+      <origin rpy="0 0 0" xyz="0.095 0.032 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_55">
+      <origin rpy="0 0 0" xyz="0.108 0.0 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_5r1">
+      <origin rpy="0 0 0" xyz="0.104 -0.02 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <collision name="r_foot_support_5l1">
+      <origin rpy="0 0 0" xyz="0.104 0.02 -0.046" />
+      <geometry>
+        <sphere radius="0.005" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="2.630900e-02 4.000000e-06 -2.631000e-02" />
+      <mass value="7.906560e-01" />
+      <inertia ixx="6.273218e-04" ixy="2.852000e-09" ixz="2.879079e-05" iyy="1.906814e-03" iyz="1.925400e-08" izz="2.202955e-03" />
+    </inertial>
+  </link>
+  <joint name="r_ankle_roll_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 0" />
+    <parent link="r_ankle_pitch_link" />
+    <child link="r_ankle_roll_link" />
+    <axis xyz="1 0 0" />
+    <limit effort="26.4" lower="-0.2617" upper="0.2617" velocity="15.9991" />
+  </joint>
+</robot>

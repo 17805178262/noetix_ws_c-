@@ -1,0 +1,44 @@
+# ROS / CMake / colcon outputs
+/build/
+/build_*/
+/install/
+/install_*/
+/log/
+/log_*/
+CMakeCache.txt
+CMakeFiles/
+Testing/
+
+# Python and editor caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+.venv-*/
+venv/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Local recordings, diagnostics and credentials
+/diagnostics/
+*.db3
+*.db3-shm
+*.db3-wal
+*.mcap
+.env
+.env.*
+*.pem
+*.key
+
+# Vendor libraries, ONNX models and meshes are required deployment resources.
+# Do not ignore *.a, *.so, *.onnx, *.npz or mesh assets globally.
+
+# Gazebo is maintained in its own repository.
+/src/noetix_gazebo/

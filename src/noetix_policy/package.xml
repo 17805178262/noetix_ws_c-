@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!-- C++ 策略包，名称与独立 Python 工程一致；两个工程需要分别构建。 -->
+<package format="3">
+  <name>noetix_policy</name><version>0.2.0</version>
+  <description>Native C++ walk, GMT and motion policies with compatible ROS interfaces.</description>
+  <maintainer email="dev@noetix.local">Noetix</maintainer><license>Apache-2.0</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend><depend>ament_index_cpp</depend><depend>noetix_msgs</depend>
+  <depend>sensor_msgs</depend><depend>nav_msgs</depend><depend>std_msgs</depend>
+  <depend>eigen</depend><depend>yaml-cpp</depend><depend>libssl-dev</depend><depend>libminizip-dev</depend>
+  <exec_depend>noetix_robots</exec_depend><exec_depend>launch</exec_depend><exec_depend>launch_ros</exec_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>noetix_gmr</name>
+  <version>0.1.0</version>
+  <description>Multi-device motion retargeting to G1, E1, Bumi3 and N3, published on noetix/gmt.</description>
+  <maintainer email="maintainers@noetix.invalid">Noetix GMR maintainers</maintainer>
+  <license>Proprietary</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
+  <depend>rcl_interfaces</depend>
+  <depend>ament_index_cpp</depend>
+  <build_depend>eigen</build_depend>
+  <depend>glfw3</depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <export><build_type>ament_cmake</build_type></export>
+</package>

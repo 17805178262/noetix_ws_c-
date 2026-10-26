@@ -1,0 +1,11 @@
+{
+  "architecture": "aarch64",
+  "mujoco_version": "3.2.3",
+  "mujoco_archive_url": "https://github.com/google-deepmind/mujoco/releases/download/3.2.3/mujoco-3.2.3-linux-aarch64.tar.gz",
+  "mujoco_archive_sha256": "985dbf73e2e1d1f809f8c99e277210db9e081b7c1693b61aab38f46ff7998e00",
+  "pico_source": "XRoboToolkit-PC-Service/RoboticsService/SDK/linux_aarch64/64/libPXREARobotSDK.so (restored from original project SDK checkout)",
+  "libraries": {
+    "mujoco/lib/aarch64/libmujoco.so.3.2.3": "cb6f3d934f3543883b61502f46a2cbaa38fec941c3570e1f426a4e7c84cb6b23",
+    "pico_sdk/lib/aarch64/libPXREARobotSDK.so": "5596ef7e8ce8be229de1656fa817ea74793cfbb494ae7248ac0302b7e2927b65"
+  }
+}

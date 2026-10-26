@@ -1,0 +1,37 @@
+simulation:
+  physics_hz: 500.0
+  control_frequency: 500.0
+  state_publish_hz: 250.0
+  clock_publish_hz: 100.0
+  gui_fps: 50.0
+  # Lower CPU overhead. This changes physics timestep to 2 ms, not ONNX inference Hz.
+  solver_iterations: 40
+  # Renderer-only settings; do not affect contacts or PD targets.
+  render:
+    shadows: false
+    reflections: false
+    offscreen_samples: 0
+    shadow_map_size: 512
+    checker_texture_size: 128
+    primitive_slices: 12
+    primitive_stacks: 8
+  # Explicit MIT PD with actuator torque saturation; differs from ODE implicit constraint solver.
+  actuator_mode: explicit_pd
+  # For parity with Gazebo default. Use zero, stand or lie (latter two require pose lists).
+  initial_pose: zero
+  spawn_clearance_m: 0.03
+  hoist_lift_height_m: 0.30
+  command_timeout_s: 0.20
+  # On command timeout keep drive enabled but remove stale motor effort (safe simulation behavior).
+  joint_viscous_damping: 0.0
+  joint_coulomb_friction: 0.0
+  foot_links: [l_ankle_roll_link, r_ankle_roll_link]
+  foot_contact:
+    mu1: 1.6
+    mu2: 1.6
+    kp: 1000000.0
+    kd: 100.0
+    min_depth: 0.001
+    max_vel: 0.10
+  headless: false
+  realtime: true

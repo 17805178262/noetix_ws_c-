@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>noetix_bridge</name>
+  <version>0.2.0</version>
+  <description>Noetix ROS 2 real-hardware bridge and RT control loop.</description>
+  <maintainer email="robotics@noetix.ai">Noetix Robotics</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>ament_index_cpp</depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>yaml-cpp</depend>
+  <depend>noetix_msgs</depend>
+  <depend>noetix_sdk2</depend>
+  <exec_depend>noetix_robots</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

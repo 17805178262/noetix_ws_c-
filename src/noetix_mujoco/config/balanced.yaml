@@ -1,0 +1,16 @@
+# Balanced preset (same as default.yaml); select explicitly if preferred.
+simulation:
+  physics_hz: 500.0
+  control_frequency: 500.0
+  state_publish_hz: 250.0
+  clock_publish_hz: 100.0
+  gui_fps: 50.0
+  solver_iterations: 40
+  render:
+    shadows: false
+    reflections: false
+    offscreen_samples: 0
+    shadow_map_size: 512
+    checker_texture_size: 128
+    primitive_slices: 12
+    primitive_stacks: 8

@@ -1,0 +1,25 @@
+# 公共遥控器配置：统一绑定底层模式请求和独立策略，不描述模型或观测空间。
+joystick:
+  topic: /joy
+  axes: {x: 1, y: 0, yaw: 3}
+  signs: {x: 1.0, y: 1.0, yaw: 1.0}
+  limits: {x: 0.5, y: 0.3, yaw: 0.5}
+  # 机器人底层模式：只发起控制请求，不填写策略模块。
+  controls:
+    - button: 6
+      action: disable
+    - button: 7
+      action: enable
+    - button: 3
+      action: lie
+    - button: 2
+      action: stand  # 请求robot.yaml中的默认站立姿态，不自动使能。
+
+  # 独立策略：只填写用户策略模块，不填写底层action。
+  policies:
+    - button: 0
+      policy: noetix_policy.policies.walk
+    - button: 4
+      policy: noetix_policy.policies.gmt
+    - buttons: [4, 5]
+      policy: noetix_policy.policies.motion

@@ -1,0 +1,17 @@
+# Shared transport/sensor configuration for the whole Bumi family.
+# bumi3, bumi4340 and bumi2 intentionally use this same file.
+vendor_robot_model: bumi1
+
+ethercat:
+  ifname: eno1
+  enable_dc: true
+  cycle_time_ns: 1000000
+
+# IMU defaults to EtherCAT/CAT.
+# USB is used only when imu.usb.enable is explicitly set to true.
+# The USB IMU protocol is fixed to the original binary driver at 921600 baud,
+# so only the enable switch and serial port need configuration.
+imu:
+  usb:
+    enable: false
+    port: /dev/ttyUSB0

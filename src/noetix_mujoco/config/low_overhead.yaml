@@ -1,0 +1,17 @@
+# Fastest GUI preset; physics/controller update at 400 Hz (dt=2.5 ms).
+# Less accurate contacts than default; compare results before treating as reference.
+simulation:
+  physics_hz: 400.0
+  control_frequency: 400.0
+  state_publish_hz: 200.0
+  clock_publish_hz: 100.0
+  gui_fps: 20.0
+  solver_iterations: 30
+  render:
+    shadows: false
+    reflections: false
+    offscreen_samples: 0
+    shadow_map_size: 256
+    checker_texture_size: 64
+    primitive_slices: 10
+    primitive_stacks: 6

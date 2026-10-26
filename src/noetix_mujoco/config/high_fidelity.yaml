@@ -1,0 +1,17 @@
+# Fidelity comparison preset (old 1 kHz physics/motor + 500 Hz LowState).
+# Use when comparing MuJoCo controller responses with Gazebo.
+simulation:
+  physics_hz: 1000.0
+  control_frequency: 1000.0
+  state_publish_hz: 500.0
+  clock_publish_hz: 200.0
+  gui_fps: 60.0
+  solver_iterations: 60
+  render:
+    shadows: true
+    reflections: true
+    offscreen_samples: 4
+    shadow_map_size: 2048
+    checker_texture_size: 512
+    primitive_slices: 28
+    primitive_stacks: 16

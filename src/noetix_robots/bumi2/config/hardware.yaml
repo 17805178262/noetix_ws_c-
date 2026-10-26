@@ -1,0 +1,276 @@
+# ============================================================================
+# Bumi2 hardware configuration
+#
+# 本文件只保存 Bumi2 自己的硬件拓扑和标定。
+#
+# Bumi 系列公共配置：
+#   vendor model
+#   EtherCAT 网卡
+#   EtherCAT 周期
+#   DC
+#   IMU 来源
+#
+# 统一放在：
+#   common/bumi/network.yaml
+# ============================================================================
+
+
+# ----------------------------------------------------------------------------
+# Actuator calibration
+# ----------------------------------------------------------------------------
+
+actuator_list:
+
+  # Left arm
+  - name: l_arm_pitch_joint
+    direction: 1
+    bias: 0.0
+
+  - name: l_arm_roll_joint
+    direction: 1
+    bias: 0.0
+
+  - name: l_arm_yaw_joint
+    direction: -1
+    bias: 0.0
+
+  - name: l_elbow_pitch_joint
+    direction: 1
+    bias: 0.0
+
+
+  # Left leg
+  - name: l_leg_pitch_joint
+    direction: 1
+    bias: 0.0
+
+  - name: l_leg_roll_joint
+    direction: 1
+    bias: 0.0
+
+  - name: l_leg_yaw_joint
+    direction: -1
+    bias: 0.0
+
+  - name: l_knee_pitch_joint
+    direction: 1
+    bias: 0.0
+
+  - name: l_ankle_pitch_joint
+    direction: 1
+    bias: 0.0
+
+  - name: l_ankle_roll_joint
+    direction: -1
+    bias: 0.0
+
+
+  # Right arm
+  - name: r_arm_pitch_joint
+    direction: -1
+    bias: 0.0
+
+  - name: r_arm_roll_joint
+    direction: 1
+    bias: 0.0
+
+  - name: r_arm_yaw_joint
+    direction: -1
+    bias: 0.0
+
+  - name: r_elbow_pitch_joint
+    direction: -1
+    bias: 0.0
+
+
+  # Right leg
+  - name: r_leg_pitch_joint
+    direction: -1
+    bias: 0.0
+
+  - name: r_leg_roll_joint
+    direction: 1
+    bias: 0.0
+
+  - name: r_leg_yaw_joint
+    direction: -1
+    bias: 0.0
+
+  - name: r_knee_pitch_joint
+    direction: -1
+    bias: 0.0
+
+  - name: r_ankle_pitch_joint
+    direction: -1
+    bias: 0.0
+
+  - name: r_ankle_roll_joint
+    direction: 1
+    bias: 0.0
+
+
+  # Waist
+  - name: waist_yaw_joint
+    direction: 1
+    bias: 0.0
+
+
+# ----------------------------------------------------------------------------
+# CANU topology
+#
+# EtherCAT slave:
+#   body = 1
+#   hip  = 2
+#
+# 电机型号、CAN ID、CANU channel 均按照新的 Bumi2 hw 配置。
+# ----------------------------------------------------------------------------
+
+canu_network:
+
+  # ==========================================================================
+  # BODY CANU
+  # EtherCAT slave 1
+  # ==========================================================================
+
+  - name: body
+    ecat_id: 1
+    enable: true
+
+    # Right leg
+    channel_2:
+
+      - name: r_leg_pitch_joint
+        type: ACTR_F5014
+        can_id: 1
+
+      - name: r_leg_roll_joint
+        type: ACTR_F5014
+        can_id: 2
+
+      - name: r_leg_yaw_joint
+        type: ACTR_4308
+        can_id: 3
+
+      - name: r_knee_pitch_joint
+        type: ACTR_F5014
+        can_id: 4
+
+      - name: r_ankle_pitch_joint
+        type: ACTR_4308
+        can_id: 5
+
+      - name: r_ankle_roll_joint
+        type: ACTR_4308
+        can_id: 6
+
+
+    # Right arm
+    channel_3:
+
+      - name: r_arm_pitch_joint
+        type: ACTR_4308
+        can_id: 1
+
+      - name: r_arm_roll_joint
+        type: ACTR_4308
+        can_id: 2
+
+      - name: r_arm_yaw_joint
+        type: ACTR_4308
+        can_id: 3
+
+      - name: r_elbow_pitch_joint
+        type: ACTR_4308
+        can_id: 4
+
+
+  # ==========================================================================
+  # HIP CANU
+  # EtherCAT slave 2
+  # ==========================================================================
+
+  - name: hip
+    ecat_id: 2
+    enable: true
+
+    # Waist
+    channel_1:
+
+      - name: waist_yaw_joint
+        type: ACTR_F5014
+        can_id: 1
+
+
+    # Left leg
+    channel_2:
+
+      - name: l_leg_pitch_joint
+        type: ACTR_F5014
+        can_id: 1
+
+      - name: l_leg_roll_joint
+        type: ACTR_F5014
+        can_id: 2
+
+      - name: l_leg_yaw_joint
+        type: ACTR_4308
+        can_id: 3
+
+      - name: l_knee_pitch_joint
+        type: ACTR_F5014
+        can_id: 4
+
+      - name: l_ankle_pitch_joint
+        type: ACTR_4308
+        can_id: 5
+
+      - name: l_ankle_roll_joint
+        type: ACTR_4308
+        can_id: 6
+
+
+    # Left arm
+    channel_3:
+
+      - name: l_arm_pitch_joint
+        type: ACTR_4308
+        can_id: 1
+
+      - name: l_arm_roll_joint
+        type: ACTR_4308
+        can_id: 2
+
+      - name: l_arm_yaw_joint
+        type: ACTR_4308
+        can_id: 3
+
+      - name: l_elbow_pitch_joint
+        type: ACTR_4308
+        can_id: 4
+
+
+# ----------------------------------------------------------------------------
+# Parallel ankle
+#
+# 当前 SDK 的约定：
+#
+#   left.pitch  -> 左踝 pitch 槽位
+#   left.roll   -> 左踝 roll 槽位
+#
+#   right.pitch -> 右踝 pitch 槽位
+#   right.roll  -> 右踝 roll 槽位
+#
+# 新 Bumi2 配置已经明确给出了 pitch / roll 名称，因此直接对应。
+# ----------------------------------------------------------------------------
+
+parallel_ankle:
+
+  motor_offset_rad: 0.2618
+
+  left:
+    pitch: l_ankle_pitch_joint
+    roll: l_ankle_roll_joint
+
+  right:
+    pitch: r_ankle_pitch_joint
+    roll: r_ankle_roll_joint

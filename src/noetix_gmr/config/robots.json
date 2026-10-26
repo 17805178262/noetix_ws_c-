@@ -1,0 +1,35 @@
+{
+  "g1": {
+    "model": "assets/unitree_g1/g1_mocap_29dof.xml",
+    "ik_configs": {
+      "optitrack": "config/ik_configs/calibrated/fbx_to_g1.json",
+      "xsens": "config/ik_configs/xsens_to_g1.json",
+      "fzmotion": "config/ik_configs/calibrated/fbx_to_g1.json",
+      "pico": "config/ik_configs/xrobot_to_g1.json"
+    }
+  },
+  "e1": {
+    "model": "assets/e1/mjcf/e1_24dof.xml",
+    "ik_configs": {
+      "optitrack": "config/ik_configs/fbx_to_e1.json",
+      "xsens": "config/ik_configs/xsens_to_e1.json",
+      "fzmotion": "config/ik_configs/fbx_to_e1_fzmotion.json",
+      "pico": "config/ik_configs/xrobot_to_e1.json"
+    }
+  },
+  "bumi3": {
+    "model": "assets/bumi3/mjcf/bumi3.xml",
+    "ik_configs": {
+      "optitrack": "config/ik_configs/fbx_to_bumi3.json",
+      "xsens": "config/ik_configs/xsens_to_bumi3.json",
+      "fzmotion": "config/ik_configs/fbx_to_bumi3.json",
+      "pico": "config/ik_configs/xrobot_to_bumi3_auto.json"
+    }
+  },
+  "n3": {
+    "model": "assets/n3/mjcf/n3_29dof.xml",
+    "ik_configs": {
+      "pico": "config/ik_configs/xrobot_to_n3.json"
+    }
+  }
+}
