@@ -26,6 +26,7 @@ class BumiController {
 
   bool enableAll();
   bool disableAll();
+  bool clearErrors();
   bool allActuatorsEnabled() const;
 
   void setHeartCnt(std::uint64_t count);

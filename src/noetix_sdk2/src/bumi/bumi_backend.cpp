@@ -550,6 +550,16 @@ bool BumiBackend::disableActuators() {
   return !impl_->enabled;
 }
 
+// 清错帧单独发送，避免被同周期MIT命令覆盖；只在完全失能时调用。
+bool BumiBackend::clearActuatorErrors() {
+  if (!impl_ || !impl_->started || impl_->controller.allActuatorsEnabled()) return false;
+  const bool ok = impl_->controller.clearErrors();
+  impl_->controller.stageCommand();
+  impl_->controller.runCycle();
+  impl_->controller.fetchData();
+  return ok;
+}
+
 bool BumiBackend::actuatorsEnabled() const {
   return impl_ && impl_->enabled && impl_->controller.allActuatorsEnabled();
 }

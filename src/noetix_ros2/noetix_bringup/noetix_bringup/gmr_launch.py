@@ -8,7 +8,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 
 GMR_ROBOTS = {"bumi2": "bumi3", "bumi3": "bumi3", "bumi4340": "bumi3", "n3": "n3"}
-# Mirrors all arguments of noetix_gmr/retarget.launch.py; parity is checked in tests.
+# 与独立retarget启动入口保持相同参数，统一转发显式填写的值。
 # Defaults are supplied by the independent retarget launch, only explicit overrides are forwarded.
 GMR_ARGUMENTS = {
     'device': ("", 'Device: pico, xsens, optitrack, fzmotion'),

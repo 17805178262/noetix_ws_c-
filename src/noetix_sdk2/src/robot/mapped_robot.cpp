@@ -181,6 +181,11 @@ bool MappedRobot::disableActuators() {
   return ok && !status_.enabled;
 }
 
+// 独立转发人工清错请求，不附带使能或自动重试。
+bool MappedRobot::clearActuatorErrors() {
+  return backend_ && backend_->clearActuatorErrors();
+}
+
 bool MappedRobot::actuatorsEnabled() const {
   return backend_ && backend_->actuatorsEnabled();
 }

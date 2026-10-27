@@ -27,7 +27,7 @@ struct InputSpec {
 };
 struct Spec {
   Kind kind;
-  std::string name, robot, model, output;
+  std::string name, robot, output;
   std::vector<std::string> names, transport;
   std::vector<float> default_q, kp, kd, action_scale;
   std::vector<InputSpec> inputs;
@@ -116,14 +116,5 @@ inline Pose mix(const Pose& a, const Pose& b, double t, int dof) {
   for (int j = 0; j < dof; ++j)
     p.joints[j] = (1 - t) * a.joints[j] + t * b.joints[j];
   return p;
-}
-inline Kind parse_kind(const std::string& value) {
-  if (value == "walk" || value == "noetix_policy.policies.walk")
-    return Kind::walk;
-  if (value == "gmt" || value == "noetix_policy.policies.gmt")
-    return Kind::gmt;
-  if (value == "motion" || value == "noetix_policy.policies.motion")
-    return Kind::motion;
-  throw std::invalid_argument("Unknown C++ policy: " + value);
 }
 }  // namespace noetix::policy

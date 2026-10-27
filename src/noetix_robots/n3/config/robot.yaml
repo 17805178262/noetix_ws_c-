@@ -164,7 +164,7 @@ joints:
 # Robot-local pose modes
 # ============================================================================
 
-lie_control:
+enable_control:
   kp: 200.0
   kd: 0.0
   kd_ankle_roll: 0.0
@@ -182,7 +182,7 @@ stand_control:
   duration_s: 2.0
   publish_hz: 1000.0
 
-lie_joint_angles:
+enable_joint_angles:  # 使能后平滑到达；左右肩第二关节分别向外展开5度。
   - name: waist_yaw_joint
     pos: 0.0
     vel: 0.0
@@ -208,7 +208,7 @@ lie_joint_angles:
     kd: 3.0
     ff: 0.0
   - name: l_arm_roll_joint
-    pos: 0.0
+    pos: 0.08726646259971647
     vel: 0.0
     kp: 20.0
     kd: 3.0
@@ -250,7 +250,7 @@ lie_joint_angles:
     kd: 3.0
     ff: 0.0
   - name: r_arm_roll_joint
-    pos: 0.0
+    pos: -0.08726646259971647
     vel: 0.0
     kp: 20.0
     kd: 3.0

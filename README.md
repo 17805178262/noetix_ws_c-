@@ -88,7 +88,7 @@ ros2 launch noetix_policy policy.launch.py
 ```
 
 `real.launch.py` 不自动启动 policy 节点，只启动底层、姿态执行节点和手柄驱动。
-另一个终端启动 policy 后，公共遥控器配置统一处理使能、失能、lie、站立及策略切换。
+另一个终端启动 policy 后，公共遥控器配置统一处理使能并进入默认姿态、失能、站立及策略切换。
 
 | 参数 | 默认值 | 含义和作用 |
 | --- | --- | --- |
@@ -176,7 +176,7 @@ MuJoCo窗口按 **H** 切换悬吊、**R** 重置并失能、**空格** 暂停/�
 policy 统一读取公共遥控器配置，发起模式请求并切换独立策略：
 
 ```bash
-# 真机先启动底层，再运行policy；按7使能，按2进入默认站立。
+# 真机先启动底层，再运行policy；按7使能并进入默认姿态，按2进入默认站立。
 ros2 launch noetix_policy policy.launch.py
 # 连接Gazebo或MuJoCo时使用仿真时钟。
 ros2 launch noetix_policy policy.launch.py use_sim_time:=true
@@ -186,20 +186,33 @@ ros2 launch noetix_gazebo sim.launch.py robot_name:=n3 launch_policy:=true
 
 | 参数 | 默认值 | 含义和作用 |
 | --- | --- | --- |
-| `joystick_config` | 包内 `config/joystick.yaml` | 公共手柄话题、轴、速度范围、模式动作及内置策略绑定 |
+| `joystick_config` | 包内 `config/joystick.yaml` | 手柄话题、轴、模式动作、策略名称和模型/motion路径 |
 | `use_sim_time` | `false` | 使用仿真的 `/clock`；同时传给启动的独立策略节点 |
 
 同一个遥控器配置分为 `controls`（机器人模式）和 `policies`（独立策略）两段：
 
 | 按钮 | 动作 |
 | --- | --- |
-| 7 | 使能：`action: enable` |
-| 6 | 失能：`action: disable` |
-| 3 | lie：`action: lie` |
+| 7 | 使能并平滑进入默认姿态：`action: enable` |
+| 6 | 阻尼3秒后失能：`action: disable` |
+| 6+7 | 立即失能：`action: estop` |
+| 3 | 人工电机清错：`action: clear_errors` |
 | 2 | 默认站立：`action: stand` |
-| 0 | 行走：`policy: noetix_policy.policies.walk` |
-| 4 | GMT：`policy: noetix_policy.policies.gmt` |
-| 4+5 | motion：`policy: noetix_policy.policies.motion` |
+| 0 | 行走：`policy: walk` |
+| 4 | GMT：`policy: gmt` |
+| 4+5 | motion：`policy: motion` |
+
+使能请求会先停止当前策略，等底层反馈已使能后，再从实测关节位置平滑过渡到默认姿态。
+N3和bumi2在 `robot.yaml` 的 `enable_control`、`enable_joint_angles` 中配置使能姿态，
+肩第二关节为左 `+5°`、右 `-5°`，其余关节目标保持原配置。
+未配置使能姿态的机型默认所有逻辑关节目标为0，增益为kp=6、kd=2，过渡2秒、发布100Hz。
+原独立lie模式已移除，3号键用于人工电机清错；站立仍由2号键单独请求。
+普通失能先由底层保持 `kp=0、kd=8` 的阻尼指令，3秒后真正关闭驱动。
+阻尼期间状态为 `MODE_DAMPING`，`enabled=true`；旧策略命令被拒绝，重复失能不会延长计时。
+重新使能会取消阻尼计时；`estop`、`stop`、`safe_stop` 始终立即失能，6+7为默认急停组合键。
+失能和急停不会自动清错。完全失能后按3号键才调用SDK清错，不改变标定、不自动使能。
+Bumi系列调用厂商 `CleanAllActuaorError()`；当前N3 SDK没有提供此接口，默认不支持。
+清错日志表示请求已发送，是否实际解除故障还需根据电机反馈确认；仿真没有硬件电机错误。
 
 `controls` 里只写 `action`，`policies` 里只写 `policy`，不再混放于 `bindings`。
 两段都支持单键 `button` 和组合键 `buttons`；键位不能跨段重复，修改后重启policy即可。
@@ -210,7 +223,7 @@ ros2 launch noetix_policy policy.launch.py \
   joystick_config:=/home/byf/scy/noetix_ws_c++/src/noetix_policy/config/joystick.yaml
 ```
 
-`policy` 字段由C++切换器解析为内置策略标识，不会导入Python模块。
+`policy` 填写 `src/noetix_policy/src/registry.cpp` 中的注册名称；旧的 `noetix_policy.policies.walk/gmt/motion` 写法仍可使用。
 
 也可以直接运行一个示例，省略切换器；以下是使用仿真时钟的示例，真机运行时省略末尾参数：
 
@@ -222,6 +235,57 @@ ros2 run noetix_policy motion_policy --ros-args -p use_sim_time:=true
 
 walk和GMT使用N3模型，motion使用bumi4340模型及现有50fps动作文件。
 选择其他底层机型时，需提供匹配的策略模型和观测定义。
+
+模型与轨迹直接写在 `joystick.yaml` 的对应策略条目下，不需要其他YAML。
+下面是 `joystick.policies` 的示例，话题、轴和 `controls` 保留原配置：
+
+```yaml
+policies:
+  - button: 0
+    policy: walk
+    model: package://noetix_policy/models/walk.onnx
+  - button: 4
+    policy: gmt
+    model: /home/nano/models/gmt_206000.onnx
+  - buttons: [4, 5]
+    policy: motion
+    model: package://noetix_policy/models/motion.onnx
+    motion: /home/nano/motions/dance.npz
+```
+
+每种策略只保留一个条目。`model` 和 `motion` 支持 `package://`、绝对路径，
+以及相对于 `joystick.yaml` 所在目录的路径。使用外部配置时，先复制完整默认文件：
+
+```bash
+mkdir -p /home/nano/deploy
+cp "$(ros2 pkg prefix noetix_policy)/share/noetix_policy/config/joystick.yaml" /home/nano/deploy/joystick.yaml
+
+# 修改该文件中的资源路径后，退出策略、再次按键进入即可，无需再编译。
+ros2 launch noetix_policy policy.launch.py joystick_config:=/home/nano/deploy/joystick.yaml
+# MuJoCo联合启动同样支持。
+ros2 launch noetix_mujoco sim.launch.py robot_name:=n3 launch_policy:=true \
+  joystick_config:=/home/nano/deploy/joystick.yaml
+# 独立策略节点也使用同一个配置参数。
+ros2 run noetix_policy motion_policy --ros-args -p joystick_config:=/home/nano/deploy/joystick.yaml
+```
+
+如果直接编辑源码中的配置，需要启动时把 `joystick_config` 指向该源码文件；
+默认读取的是 `install` 中的副本，普通构建不会把两者实时关联。
+模型和轨迹路径在每次进入策略时重新读取，独立运行的策略需要重启节点；
+按键绑定在切换器启动时读取，修改按键需要重启切换器。运行中的策略不会自动切换文件。
+同一路径的ONNX文件大小或修改时间变化后，下次进入会重新加载、校验和预热；
+未变化的模型继续复用会话，更换路径后不继续在缓存中保留该策略的旧模型。
+替换文件时不要保留旧文件的修改时间，建议使用新文件名。
+新模型加载或预热可能使切换稍慢，加载失败时保留原策略；加载前的原策略继续运行。
+日志显示实际模型路径、SHA256和motion路径。输入输出名称、维度会校验，
+但观测顺序、单位、缩放和动作定义仍必须与训练一致；motion仍需符合现有50fps/关节字段要求。
+
+部署实现集中在 `src/noetix_policy/src/policies/walk.cpp`、`gmt.cpp`、`motion.cpp`，
+各文件包含对应训练参数和观测入口；公共数学及历史缓冲保留在 `core.cpp`。
+训练定义改变时，修改相应C++策略并编译；新增策略时，声明其契约/策略类，
+在 `registry.cpp` 增加注册条目并把新文件加入 `CMakeLists.txt`，然后在手柄配置中填写注册名称。
+资源配置与注册表只在初始化、切换时使用，50Hz推理循环不读取配置或文件。
+
 三个策略的目标周期为20ms，即50Hz；周期由策略源码设置。
 底层 `control_frequency_hz`、GMR `publish_hz` 和策略推理频率分别设置。
 
@@ -366,6 +430,8 @@ ros2 run plotjuggler plotjuggler
 `/noetix/low_cmd` 由当前姿态或策略控制节点发布，测到的频率需要结合当前模式判断。
 策略节点在加载、切换、参考状态变化、周期性能统计或错误时打印信息。
 
+GMR仅输出启动、连接状态变化和必要异常提示，不再提供逐帧追踪、周期耗时统计参数。
+
 ## 7. 根目录 SH 脚本使用方法
 
 两个脚本与本 README 位于同一目录。首次使用先进入工作区：
@@ -441,7 +507,7 @@ chmod +x build.sh start.sh
 ### 第三步：手柄操作与退出
 
 脚本只启动进程，不自动使能机器人或激活策略。默认键位：
-**7使能、6失能、2站立、3躺下、0行走、4进入GMT、4+5进入motion**。
+**7使能并进入默认姿态、6阻尼3秒后失能、6+7立即失能、3电机清错、2站立、0行走、4进入GMT、4+5进入motion**。
 模型对应机型见第4节。
 
 在脚本终端按 **Ctrl+C** 退出。真机模式会同时停止本脚本启动的底层和策略；

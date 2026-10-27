@@ -76,6 +76,11 @@ bool BumiController::disableAll() {
   return impl_ && impl_->hw && impl_->hw->DisableAllActuator();
 }
 
+// 使用厂商提供的全电机清错接口，函数拼写与厂商ABI保持一致。
+bool BumiController::clearErrors() {
+  return impl_ && impl_->hw && impl_->hw->CleanAllActuaorError();
+}
+
 bool BumiController::allActuatorsEnabled() const {
   return impl_ && impl_->hw && impl_->hw->GetAllEnableState();
 }

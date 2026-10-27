@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
   try {
 #ifdef NOETIX_STANDALONE_KIND
     policy = std::make_shared<noetix::policy::PolicyNode>(
-        noetix::policy::parse_kind(NOETIX_STANDALONE_KIND), rclcpp::NodeOptions());
+        NOETIX_STANDALONE_KIND, rclcpp::NodeOptions());
     executor->add_node(policy);
     policy->start();
 #else

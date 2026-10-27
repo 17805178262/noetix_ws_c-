@@ -197,7 +197,7 @@ joints:
 # keeps publishing the final command until another controller takes ownership.
 # ============================================================================
 
-lie_control:
+enable_control:
   kp: 10.0
   kd: 0.5
   kd_ankle_roll: 0.2
@@ -215,7 +215,7 @@ stand_control:
   duration_s: 2.0
   publish_hz: 500.0
 
-lie_joint_angles:
+enable_joint_angles:  # 使能后平滑到达；左右肩第二关节分别向外展开5度。
   - name: l_leg_pitch_joint
     pos: 0.0
     vel: 0.0
@@ -271,13 +271,13 @@ lie_joint_angles:
     kd: 0.5
     ff: 0.0
   - name: l_arm_roll_joint
-    pos: 0.0
+    pos: 0.08726646259971647
     vel: 0.0
     kp: 10.0
     kd: 0.5
     ff: 0.0
   - name: r_arm_roll_joint
-    pos: 0.0
+    pos: -0.08726646259971647
     vel: 0.0
     kp: 10.0
     kd: 0.5

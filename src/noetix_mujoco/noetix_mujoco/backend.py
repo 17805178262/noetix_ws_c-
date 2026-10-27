@@ -64,6 +64,7 @@ class NoetixMujocoBackend:
         self.command = None
         self.command_rx_at = 0.0
         self.enabled = False
+        self.damping_until = 0.0
         self.hoist_request = None
         self.keyboard_hoist_active = False
         self.keyboard_hoist_rx = 0.0
@@ -107,6 +108,9 @@ class NoetixMujocoBackend:
         self._motor_error = np.empty(n_motors, dtype=np.float64)
         self._motor_tau = np.empty(n_motors, dtype=np.float64)
         self._motor_scratch = np.empty(n_motors, dtype=np.float64)
+        # 阻尼命令预分配；每个控制周期只读取，不创建新数组。
+        self._damping_command = tuple(np.zeros(n_motors) for _ in range(5))
+        self._damping_command[4][:] = 8.0
         self.hoist_eq = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_EQUALITY,
                                            'noetix_hoist_weld')
         self.hoist_anchor = mujoco.mj_name2id(self.model,mujoco.mjtObj.mjOBJ_BODY,
@@ -187,7 +191,7 @@ class NoetixMujocoBackend:
             [c.kd for c in ordered],
         ))
         with self.lock:
-            if self.enabled:
+            if self.enabled and not self.damping_until:
                 self.command = prepared
                 self.command_rx_at = time.monotonic()
             else:
@@ -197,15 +201,24 @@ class NoetixMujocoBackend:
         value = msg.data.strip().lower()
         with self.lock:
             if value == 'enable':
-                if not self.enabled:
+                if not self.enabled or self.damping_until:
                     self.enabled = True
+                    self.damping_until = 0.0
                     self.command = None
                     self.logger.info('SIM drive -> ENABLED')
-            elif value in ('disable','stop','estop','safe_stop'):
+            elif value == 'disable':
+                if self.enabled and not self.damping_until:
+                    self.damping_until = time.monotonic() + 3.0
+                    self.command = None
+                    self.logger.info('SIM drive -> DAMPING; kp=0 kd=8; DISABLE in 3s')
+            elif value in ('stop','estop','safe_stop'):
                 self.enabled = False
+                self.damping_until = 0.0
                 self.command = None
                 self.logger.info('SIM drive -> DISABLED')
-            # stand/lie intentionally consumed by the shared pose-mode node.
+            elif value == 'clear_errors':
+                self.logger.info('Simulation has no hardware motor errors to clear')
+            # 使能后的默认姿态和stand由共享姿态节点通过普通LowCmd执行。
 
     def _on_keyboard_hoist(self,msg):
         with self.lock:
@@ -250,6 +263,7 @@ class NoetixMujocoBackend:
             self._reset_requested = False
             if reset:
                 self.enabled = False
+                self.damping_until = 0.0
                 self.command = None
                 self.keyboard_hoist_active = False
                 self._manual_hoist = False
@@ -287,7 +301,8 @@ class NoetixMujocoBackend:
             enabled = self.enabled
             fresh = self.command is not None and (
                 time.monotonic()-self.command_rx_at <= self.cfg['command_timeout_s'])
-            command = self.command if enabled and fresh else None
+            command = (self._damping_command if self.damping_until else
+                       self.command if enabled and fresh else None)
         if command is None:
             self.data.ctrl[:] = 0
             self.last_effort[:] = 0
@@ -361,7 +376,9 @@ class NoetixMujocoBackend:
         state.imu.accelerometer = [float(x) for x in acc]
         with self.lock:
             enabled = self.enabled
-        state.status.mode = RobotStatus.MODE_ENABLED if enabled else RobotStatus.MODE_DISABLED
+            damping = bool(self.damping_until)
+        state.status.mode = (RobotStatus.MODE_DAMPING if damping else
+                             RobotStatus.MODE_ENABLED if enabled else RobotStatus.MODE_DISABLED)
         state.status.connected = True
         state.status.enabled = enabled
         state.status.fault = 0
@@ -382,7 +399,7 @@ class NoetixMujocoBackend:
     def _publish_stats(self):
         from std_msgs.msg import String
         with self.lock:
-            mode = 'ENABLED' if self.enabled else 'DISABLED'
+            mode = 'DAMPING' if self.damping_until else 'ENABLED' if self.enabled else 'DISABLED'
             fresh = self.command is not None and (
                 time.monotonic()-self.command_rx_at <= self.cfg['command_timeout_s'])
         self.control_state_pub.publish(String(
@@ -404,6 +421,13 @@ class NoetixMujocoBackend:
         speed_sim = float(self.data.time)
         speed_steps = 0
         while self.running:
+            # 使用单调墙钟计时，暂停仿真也不会无限延长三秒阻尼。
+            with self.lock:
+                if self.damping_until and time.monotonic() >= self.damping_until:
+                    self.damping_until = 0.0
+                    self.enabled = False
+                    self.command = None
+                    self.logger.info('Damping finished; SIM drive -> DISABLED')
             self._process_requests()
             with self.lock:
                 paused = self._paused

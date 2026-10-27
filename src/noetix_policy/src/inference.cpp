@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <fstream>
+#include <filesystem>
 #include <iomanip>
 #include <map>
 #include <mutex>
@@ -235,15 +236,29 @@ std::shared_ptr<Model> load_model(const Spec& spec, const std::string& path) {
   // Env先于缓存构造、晚于缓存析构，确保所有Session释放后才销毁ORT环境。
   (void)environment();
   static std::mutex mutex;
-  static std::map<std::string, std::shared_ptr<Model>> cache;
+  struct CachedModel {
+    std::string path;
+    std::filesystem::file_time_type modified;
+    uintmax_t size;
+    std::shared_ptr<Model> model;
+  };
+  static std::map<std::string, CachedModel> cache;
   std::lock_guard<std::mutex> lock(mutex);
-  std::string key = path + ":" + env_or("NOETIX_GMT_BACKEND", "cpu") + ":" +
+  const auto modified = std::filesystem::last_write_time(path);
+  const auto size = std::filesystem::file_size(path);
+  std::string key = spec.name + ":" + std::to_string(static_cast<int>(spec.kind)) + ":" +
+                    env_or("NOETIX_GMT_BACKEND", "cpu") + ":" +
                     env_or("NOETIX_GMT_ORT_THREADS", "2");
   auto it = cache.find(key);
-  if (it != cache.end())
-    return it->second;
+  if (it != cache.end() && it->second.path == path &&
+      it->second.modified == modified && it->second.size == size) {
+    // 同一模型可能被不同注册策略引用，复用前仍校验其输入输出契约。
+    std::vector<int64_t> shape;
+    validate(it->second.model->session, spec, shape);
+    return it->second.model;
+  }
   auto value = std::make_shared<Model>(spec, path);
-  cache.emplace(key, value);
+  cache.insert_or_assign(key, CachedModel{path, modified, size, value});
   return value;
 }
 Inference::Inference(const Spec& config, std::vector<std::vector<float>>& data,

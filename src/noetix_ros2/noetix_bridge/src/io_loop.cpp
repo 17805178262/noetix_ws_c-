@@ -84,6 +84,9 @@ IoLoop::IoLoop(std::shared_ptr<noetix::RobotInterface> robot,
   // 初始化零命令与命令快照：先 resize，再填名字，最后全部置零。
   zero_command_.resize(dof_);
   command_snapshot_.resize(dof_);
+  damping_command_.resize(dof_);
+  initializeCommand(damping_command_);
+  zeroCommand(damping_command_);
   initializeCommand(zero_command_);   // 设置大小与每个电机名字
   initializeCommand(command_snapshot_);
   zeroCommand(zero_command_);         // q/dq/tau/kp/kd 全置 0
@@ -279,8 +282,8 @@ void IoLoop::stop()
  */
 bool IoLoop::setCommand(const noetix::LowCmd& command)
 {
-  // 驱动未使能时拒绝接收命令。
-  if (!drive_enabled_.load(std::memory_order_acquire)) {
+  // 失能和阻尼期间均拒绝上层命令，防止旧策略覆盖阻尼输出。
+  if (!drive_enabled_.load(std::memory_order_acquire) || damping_.load(std::memory_order_acquire)) {
     return false;
   }
   // 命令数量必须与自由度一致。
@@ -390,6 +393,7 @@ bool IoLoop::enableDrive()
   if (!robot_) {
     return false;
   }
+  damping_.store(false, std::memory_order_release);
   const bool ok = robot_->enableActuators();
   // 只有厂商接口返回成功且查询确实为使能，才认为使能成功。
   const bool enabled = ok && robot_->actuatorsEnabled();
@@ -419,6 +423,7 @@ bool IoLoop::enableDrive()
  */
 bool IoLoop::disableDrive()
 {
+  damping_.store(false, std::memory_order_release);
   clearCommand();
   drive_enabled_.store(false, std::memory_order_release);
 
@@ -443,6 +448,33 @@ bool IoLoop::disableDrive()
  *
  * @note 使用 acquire 语义，与 enableDrive/disableDrive 中的 release 配对。
  */
+// 只撤掉刚度和前馈，保留速度阻尼；不自动使能已关闭的驱动。
+bool IoLoop::beginDamping(double kd)
+{
+  if (!std::isfinite(kd) || kd < 0.0) return false;
+  std::lock_guard<std::mutex> lock(robot_mutex_);
+  if (!robot_ || !drive_enabled_.load(std::memory_order_acquire)) return false;
+  for (auto& motor : damping_command_.motor_cmd) motor.kd = static_cast<float>(kd);
+  damping_.store(true, std::memory_order_release);
+  clearCommand();
+  return robot_->write(damping_command_);
+}
+
+// 查询阻尼阶段，驱动在此期间仍然使能。
+bool IoLoop::dampingActive() const noexcept
+{
+  return damping_.load(std::memory_order_acquire);
+}
+
+// 与I/O周期互斥地发送人工清错请求，完全失能后才允许执行。
+bool IoLoop::clearMotorErrors()
+{
+  std::lock_guard<std::mutex> lock(robot_mutex_);
+  if (!robot_ || drive_enabled_.load(std::memory_order_acquire) || robot_->actuatorsEnabled())
+    return false;
+  return robot_->clearActuatorErrors();
+}
+
 bool IoLoop::driveEnabled() const noexcept
 {
   return drive_enabled_.load(std::memory_order_acquire);
@@ -546,7 +578,9 @@ void IoLoop::cycle()
   // 2) 选择本周期要下发的命令。
   // 默认输出零命令；只有驱动使能且存在有效命令时，才使用命令快照。
   const noetix::LowCmd* output = &zero_command_;
-  if (drive_enabled_.load(std::memory_order_acquire) &&
+  if (damping_.load(std::memory_order_acquire) && drive_enabled_.load(std::memory_order_acquire)) {
+    output = &damping_command_;
+  } else if (drive_enabled_.load(std::memory_order_acquire) &&
       command_valid_.load(std::memory_order_acquire)) {
     // 从命令双缓冲读取最新命令到快照。
     // 读失败时保留上一次快照，因此无论成功与否都用这个缓冲区下发。

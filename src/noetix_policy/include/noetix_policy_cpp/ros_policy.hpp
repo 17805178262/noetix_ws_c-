@@ -17,11 +17,12 @@
 #include <thread>
 
 #include "noetix_policy_cpp/inference.hpp"
+#include "noetix_policy_cpp/resources.hpp"
 namespace noetix::policy {
 double steady_seconds();
 class PolicyNode : public rclcpp::Node {
  public:
-  PolicyNode(Kind kind, const rclcpp::NodeOptions& options, bool pending = false);
+  PolicyNode(const std::string& name, const rclcpp::NodeOptions& options, bool pending = false);
   ~PolicyNode() override;
   void start();
   void shutdown(bool release = true);
@@ -31,10 +32,12 @@ class PolicyNode : public rclcpp::Node {
   bool ready() const { return ready_.load(); }
 
  private:
+  PolicyNode(Spec definition, const rclcpp::NodeOptions& options, bool pending);
   struct Mapping {
     std::string actuator;
     double direction = 1, offset = 0;
   };
+  PolicyResources resources_;
   std::unique_ptr<IPolicy> policy_;
   Inference inference_;
   std::vector<Mapping> mapping_;

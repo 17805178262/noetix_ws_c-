@@ -199,14 +199,15 @@ private:
         if (!latest) return;
         if (now - latest->frame_time > stale_timeout_) {
             if (!stale_) {
-                RCLCPP_WARN(get_logger(), "Motion input timed out; publication paused until fresh IK data arrives");
+                RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
+                                     "Motion input timed out; publication paused until fresh IK data arrives");
             }
             stale_ = true;
             return;
         }
         if (stale_) {
             output_->reset();
-            RCLCPP_INFO(get_logger(), "Fresh motion input received; publication resumed");
+            RCLCPP_DEBUG(get_logger(), "Fresh motion input received; publication resumed");
             stale_ = false;
         }
         const auto frame = interpolation_delay_ > 0 ?

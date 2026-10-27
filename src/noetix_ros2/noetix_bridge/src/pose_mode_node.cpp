@@ -21,6 +21,7 @@ namespace noetix_bridge {
 
 class PoseModeNode final : public rclcpp::Node {
  public:
+  // 构造共享姿态节点，统一处理使能姿态和站立。
   PoseModeNode()
   : rclcpp::Node("noetix_pose_mode_node")
   {
@@ -32,21 +33,19 @@ class PoseModeNode final : public rclcpp::Node {
         get_parameter("trajectory_use_ros_time").as_bool();
     resource_ = loadRobotResource(robot_name_);
 
-    // Compatibility fallback for robots that do not yet have a LIE profile.
-    // It preserves the old zero-return tool behavior, but the public request
-    // is still only "lie".  Once lie_control + lie_joint_angles are added to
-    // that robot.yaml, the robot-local profile automatically takes precedence.
-    legacy_lie_profile_.configured = true;
-    legacy_lie_profile_.duration_s = 2.0;
-    legacy_lie_profile_.publish_hz = 100.0;
-
     state_sub_ = create_subscription<noetix_msgs::msg::LowState>(
         "/noetix/low_state", rclcpp::SensorDataQoS(),
         [this](noetix_msgs::msg::LowState::SharedPtr msg) {
           latest_state_ = std::move(msg);
+          // 只有收到已使能反馈后才开始姿态，避免与底层异步使能发生竞态。
+          if (enable_pending_ && latest_state_->status.mode ==
+                  noetix_msgs::msg::RobotStatus::MODE_ENABLED) {
+            enable_pending_ = false;
+            startMode("enable");
+          }
           if (active_ &&
-              latest_state_->status.mode ==
-                  noetix_msgs::msg::RobotStatus::MODE_DISABLED) {
+              (latest_state_->status.mode == noetix_msgs::msg::RobotStatus::MODE_DISABLED ||
+               latest_state_->status.mode == noetix_msgs::msg::RobotStatus::MODE_DAMPING)) {
             stopMode("drive disabled");
           }
         });
@@ -70,9 +69,9 @@ class PoseModeNode final : public rclcpp::Node {
 
     RCLCPP_INFO(
         get_logger(),
-        "Pose-mode controller ready robot=%s lie=%s stand=%s",
+        "Pose-mode controller ready robot=%s enable=%s stand=%s",
         robot_name_.c_str(),
-        resource_.lie_control.configured ? "configured" : "missing",
+        resource_.enable_control.configured ? "configured" : "missing",
         resource_.stand_control.configured ? "configured" : "missing");
   }
 
@@ -87,16 +86,18 @@ class PoseModeNode final : public rclcpp::Node {
     double kd{0.0};
   };
 
+  // 五次插值使姿态切换的起止速度连续。
   static double quintic(double t)
   {
     t = std::clamp(t, 0.0, 1.0);
     return t * t * t * (10.0 + t * (-15.0 + 6.0 * t));
   }
 
+  // 根据控制请求选择机器人本地姿态参数。
   const JointControlProfile* profileFor(const std::string& mode) const
   {
-    if (mode == "lie") {
-      return &resource_.lie_control;
+    if (mode == "enable") {
+      return &resource_.enable_control;
     }
     if (mode == "stand") {
       return &resource_.stand_control;
@@ -104,6 +105,7 @@ class PoseModeNode final : public rclcpp::Node {
     return nullptr;
   }
 
+  // 使能请求等待反馈后执行，停止请求同时取消未完成的使能姿态。
   void onRequest(std::string request)
   {
     std::transform(
@@ -118,50 +120,39 @@ class PoseModeNode final : public rclcpp::Node {
       return;
     }
 
-    if (request != "lie" && request != "stand") {
+    if (request == "enable") {
+      stopMode("enable requested");
+      enable_pending_ = true;
+      RCLCPP_INFO(get_logger(), "Enable pose pending; waiting for enabled LowState");
       return;
     }
-
-    startMode(request);
+    if (request == "stand") {
+      enable_pending_ = false;
+      startMode(request);
+    }
   }
 
+  // 策略取得控制权后停止姿态命令，保持单一上层控制源。
   void onPolicyState(const std::string& text)
   {
-    if (!active_) {
-      return;
-    }
-
     if (text.rfind("active=", 0) == 0 &&
         text.rfind("active=none", 0) != 0) {
       stopMode("policy took over");
     }
   }
 
+  // 从当前关节反馈平滑过渡到配置姿态。
   void startMode(const std::string& mode)
   {
     const JointControlProfile* profile = profileFor(mode);
-    bool legacy_lie = false;
-
     if (profile == nullptr) {
       return;
     }
 
     if (!profile->configured) {
-      if (mode == "lie") {
-        profile = &legacy_lie_profile_;
-        legacy_lie = true;
-        RCLCPP_WARN(
-            get_logger(),
-            "LIE profile missing in %s; using legacy zero-position fallback "
-            "(q=0, dq=0, tau=0, kp=30, kd=2, duration=2s, publish=100Hz)",
-            resource_.robot_yaml.c_str());
-      } else {
-        RCLCPP_ERROR(
-            get_logger(),
-            "%s request ignored: %s_control/%s_joint_angles is not configured in %s",
-            mode.c_str(), mode.c_str(), mode.c_str(), resource_.robot_yaml.c_str());
-        return;
-      }
+      RCLCPP_ERROR(get_logger(), "%s pose is not configured in %s",
+                   mode.c_str(), resource_.robot_yaml.c_str());
+      return;
     }
 
     if (!latest_state_) {
@@ -187,7 +178,7 @@ class PoseModeNode final : public rclcpp::Node {
       current_q.emplace(motor.name, static_cast<double>(motor.q));
     }
 
-    if (!legacy_lie && profile->joints.size() != resource_.joints.size()) {
+    if (profile->joints.size() != resource_.joints.size()) {
       RCLCPP_ERROR(
           get_logger(),
           "%s request ignored: profile DOF mismatch profile=%zu robot=%zu",
@@ -214,37 +205,20 @@ class PoseModeNode final : public rclcpp::Node {
       command.actuator_name = mapping.actuator_name;
       command.start_q = state_it->second;
 
-      if (legacy_lie) {
-        // Preserve the old utility exactly when this robot has no LIE config.
-        // The old utility worked directly in actuator coordinates.
-        command.target_q = 0.0;
-        command.target_dq = 0.0;
-        command.target_tau = 0.0;
-        command.kp = 30.0;
-        command.kd = 2.0;
-      } else {
-        const auto& source = profile->joints[i];
-        if (source.joint_name != mapping.joint_name ||
-            source.actuator_name != mapping.actuator_name) {
-          RCLCPP_ERROR(
-              get_logger(),
-              "%s request ignored: profile order/mapping mismatch at index %zu",
-              mode.c_str(), i);
-          return;
-        }
-
-        const double direction = static_cast<double>(mapping.direction);
-
-        // publishState() uses:
-        //   q_joint = direction * q_motor + offset
-        // Therefore the inverse command mapping is:
-        //   q_motor = direction * (q_joint - offset)
-        command.target_q = direction * (source.pos - mapping.offset);
-        command.target_dq = direction * source.vel;
-        command.target_tau = direction * source.ff;
-        command.kp = source.kp;
-        command.kd = source.kd;
+      const auto& source = profile->joints[i];
+      if (source.joint_name != mapping.joint_name ||
+          source.actuator_name != mapping.actuator_name) {
+        RCLCPP_ERROR(get_logger(), "%s request ignored: profile order/mapping mismatch at index %zu",
+                     mode.c_str(), i);
+        return;
       }
+      // robot.yaml使用逻辑关节坐标；下发前逆变换为执行器坐标。
+      const double direction = static_cast<double>(mapping.direction);
+      command.target_q = direction * (source.pos - mapping.offset);
+      command.target_dq = direction * source.vel;
+      command.target_tau = direction * source.ff;
+      command.kp = source.kp;
+      command.kd = source.kd;
 
       next_commands.push_back(std::move(command));
     }
@@ -265,11 +239,13 @@ class PoseModeNode final : public rclcpp::Node {
         "Mode -> %s robot=%s joints=%zu duration=%.3fs publish=%.1fHz source=%s",
         active_mode_.c_str(), robot_name_.c_str(), commands_.size(),
         profile->duration_s, profile->publish_hz,
-        legacy_lie ? "legacy-fallback" : resource_.robot_yaml.c_str());
+        resource_.robot_yaml.c_str());
   }
 
+  // 停止姿态定时器并取消等待中的使能姿态。
   void stopMode(const char* reason)
   {
+    enable_pending_ = false;
     if (!active_) {
       return;
     }
@@ -291,6 +267,7 @@ class PoseModeNode final : public rclcpp::Node {
         old_mode.c_str(), reason);
   }
 
+  // 按姿态档位配置发布定时器。
   void setPublishRate(double publish_hz)
   {
     if (timer_) {
@@ -304,6 +281,7 @@ class PoseModeNode final : public rclcpp::Node {
     timer_ = create_wall_timer(period, [this]() { step(); });
   }
 
+  // 按时间插值并持续发布目标，直到控制权交接。
   void step()
   {
     if (!active_ || active_profile_ == nullptr || commands_.empty()) {
@@ -350,10 +328,10 @@ class PoseModeNode final : public rclcpp::Node {
   }
 
   RobotResourceInfo resource_;
-  JointControlProfile legacy_lie_profile_;
   std::string robot_name_;
 
   bool active_{false};
+  bool enable_pending_{false};
   bool transition_complete_logged_{false};
   std::uint64_t sequence_{0};
   std::string active_mode_;

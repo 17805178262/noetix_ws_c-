@@ -17,7 +17,7 @@ simulation:
     primitive_stacks: 8
   # Explicit MIT PD with actuator torque saturation; differs from ODE implicit constraint solver.
   actuator_mode: explicit_pd
-  # For parity with Gazebo default. Use zero, stand or lie (latter two require pose lists).
+  # For parity with Gazebo default. Use zero, stand or enable (latter two require pose lists).
   initial_pose: zero
   spawn_clearance_m: 0.03
   hoist_lift_height_m: 0.30

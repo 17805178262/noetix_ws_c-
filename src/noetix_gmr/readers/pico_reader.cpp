@@ -81,17 +81,15 @@ void PicoReader::pxreaCallback(
     if (!ctx) return;
     auto* self = static_cast<PicoReader*>(ctx);
     if (type == PXREAServerConnect) {
-        self->service_connected_ = true;
-        std::cerr << "[PicoReader] PC Service connected.\n";
+        if (!self->service_connected_.exchange(true))
+            std::cerr << "[PicoReader] PC Service connected.\n";
     } else if (type == PXREAServerDisconnect) {
-        self->service_connected_ = false;
-        std::cerr << "[PicoReader] PC Service disconnected.\n";
+        if (self->service_connected_.exchange(false))
+            std::cerr << "[PicoReader] PC Service disconnected.\n";
     } else if (type == PXREADeviceFind) {
         ++self->devices_found_;
-        std::cerr << "[PicoReader] Device discovered.\n";
     } else if (type == PXREADeviceMissing) {
         ++self->devices_lost_;
-        std::cerr << "[PicoReader] Device went offline.\n";
     } else if (type == PXREADeviceStateJson && user_data) {
         ++self->state_frames_;
         auto& dsj = *static_cast<PXREADevStateJson*>(user_data);
@@ -100,12 +98,13 @@ void PicoReader::pxreaCallback(
 }
 
 void PicoReader::onStateJson(const char* json_str) {
+    // 在JSON解析之前记录本机回调到达时间；不是头显采集时间或无线传输延迟。
+    const int64_t stamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
     try {
         auto parsed = parsePicoBody(json_str);
         if (!parsed) return;
         const auto& joints = *parsed;
-        const int64_t stamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            std::chrono::steady_clock::now().time_since_epoch()).count();
 
         {
             std::lock_guard<std::mutex> lk(body_mtx_);
@@ -120,17 +119,6 @@ void PicoReader::onStateJson(const char* json_str) {
             std::chrono::duration_cast<std::chrono::nanoseconds>(
                 std::chrono::steady_clock::now().time_since_epoch()).count();
         raw.frame_number = int(raw.stamp_ns / 1000000);
-        // TEMP: print raw Pelvis data once
-        static bool printed = false;
-        if (!printed) {
-            printed = true;
-            std::printf("[RAW] Pelvis:    x=%.4f y=%.4f z=%.4f qx=%.4f qy=%.4f qz=%.4f qw=%.4f\n",
-                joints[0][0], joints[0][1], joints[0][2], joints[0][3], joints[0][4], joints[0][5], joints[0][6]);
-            std::printf("[RAW] Left_Hip:  x=%.4f y=%.4f z=%.4f qx=%.4f qy=%.4f qz=%.4f qw=%.4f\n",
-                joints[1][0], joints[1][1], joints[1][2], joints[1][3], joints[1][4], joints[1][5], joints[1][6]);
-            std::printf("[RAW] Right_Hip: x=%.4f y=%.4f z=%.4f qx=%.4f qy=%.4f qz=%.4f qw=%.4f\n",
-                joints[2][0], joints[2][1], joints[2][2], joints[2][3], joints[2][4], joints[2][5], joints[2][6]);
-        }
         for (size_t i = 0; i < kBoneNames.size(); ++i) {
             auto it = cfg_.bone_name_map.find(kBoneNames[i]);
             if (it == cfg_.bone_name_map.end()) continue;
@@ -141,20 +129,6 @@ void PicoReader::onStateJson(const char* json_str) {
 
         if (cfg_.normalize_initial_yaw)
             applyInitialYawNormalization(raw.body_data);
-
-        // 打印放在循环外面，所有骨骼都已处理完
-        static bool printed2 = false;
-        if (!printed2) {
-            printed2 = true;
-            for (auto& name : {"Pelvis", "Left_Hip", "Right_Hip"}) {
-                auto it2 = raw.body_data.find(name);
-                if (it2 != raw.body_data.end())
-                    std::printf("[CPP_TRANSFORMED] %s: pos=[%.4f,%.4f,%.4f] rot=[%.4f,%.4f,%.4f,%.4f]\n",
-                        name,
-                        it2->second.position[0], it2->second.position[1], it2->second.position[2],
-                        it2->second.rot_wxyz[0], it2->second.rot_wxyz[1], it2->second.rot_wxyz[2], it2->second.rot_wxyz[3]);
-            }
-        }
 
         if (!raw.body_data.empty()) queue_.push(std::move(raw));
 

@@ -27,6 +27,7 @@ class MappedRobot : public RobotInterface {
   bool write(const LowCmd& command) override;
   bool enableActuators() override;
   bool disableActuators() override;
+  bool clearActuatorErrors() override;
   bool actuatorsEnabled() const override;
   RobotStatus status() const override;
 

@@ -35,7 +35,7 @@ struct JointModeResource {
 };
 
 /**
- * 从 config/robot.yaml 解析得到的机器人本地 LIE/STAND（躺/站）控制档位。
+ * 从 config/robot.yaml 解析得到的机器人本地使能姿态/站立控制档位。
  *
  * joints 的顺序始终与 robot.joint_order 完全一致。
  * 一个已配置的档位必须为每个已配置的关节包含一条命令。
@@ -60,7 +60,7 @@ struct RobotResourceInfo {
   std::vector<JointResource> joints;       ///< 关节资源列表，包含关节与执行器的映射及校准参数
   std::size_t dof{0};                      ///< 自由度（Degree of Freedom），默认为 0
   std::string imu_frame{"base_imu"};       ///< IMU 坐标系名称，默认为 "base_imu"
-  JointControlProfile lie_control;         ///< “躺下”（LIE）姿态的控制档位参数
+  JointControlProfile enable_control;      ///< 使能成功后进入的默认姿态参数
   JointControlProfile stand_control;       ///< “站立”（STAND）姿态的控制档位参数
 };
 

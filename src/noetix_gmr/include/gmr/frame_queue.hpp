@@ -6,7 +6,8 @@
  */
 
 #include "body_map.hpp"
-#include <atomic>
+#include <cstdint>
+#include <chrono>
 #include <deque>
 #include <mutex>
 #include <condition_variable>
@@ -26,10 +27,8 @@ public:
     void push(RawFrame f) {
         std::lock_guard<std::mutex> lk(mtx_);
         q_.push_back(std::move(f));
-        total_pushed_++;
         if (q_.size() > max_size_) {
             q_.pop_front();
-            total_dropped_++;
         }
         cv_.notify_one();
     }
@@ -55,10 +54,8 @@ public:
                   std::chrono::duration<double>(timeout_sec);
         if (!cv_.wait_until(lk, dl, [&] { return !q_.empty(); }))
             return false;
-        const size_t stale = q_.size() - 1;
         out = std::move(q_.back());
         q_.clear();
-        total_dropped_ += stale;
         return true;
     }
 
@@ -67,16 +64,11 @@ public:
         return q_.size();
     }
 
-    size_t totalPushed() const { return total_pushed_.load(); }
-    size_t totalDropped() const { return total_dropped_.load(); }
-
 private:
     size_t                  max_size_;
     std::deque<RawFrame>    q_;
     mutable std::mutex      mtx_;
     std::condition_variable cv_;
-    std::atomic<size_t>     total_pushed_{0};
-    std::atomic<size_t>     total_dropped_{0};
 };
 
 } // namespace gmr

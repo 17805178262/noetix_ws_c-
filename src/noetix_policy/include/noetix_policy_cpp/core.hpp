@@ -105,6 +105,8 @@ class MotionPolicy final : public TrackingPolicy {
   int motion_index_ = 0;
 };
 
+// 只在创建策略时查注册表，推理循环直接调用策略对象。
+Spec policy_spec(const std::string& name);
 std::unique_ptr<IPolicy> make_policy(Spec config, const std::string& motion_path = "");
 V3 estimate_root_position(const State& state);
 

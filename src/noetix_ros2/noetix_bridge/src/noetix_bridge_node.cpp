@@ -107,6 +107,12 @@ class NoetixBridgeNode final : public rclcpp::Node {
     state_timer_ = create_wall_timer(2ms, [this]() { publishState(); });
     // 每 2s 发布一次控制统计信息
     stats_timer_ = create_wall_timer(2s, [this]() { publishControlState(); });
+    damping_timer_ = create_wall_timer(10ms, [this]() {
+      if (io_loop_->dampingActive() && std::chrono::steady_clock::now() >= damping_end_) {
+        if (io_loop_->disableDrive()) RCLCPP_INFO(get_logger(), "Damping finished; Mode -> DISABLED");
+        else RCLCPP_ERROR(get_logger(), "DISABLE failed after damping");
+      }
+    });
 
     // ---------- 8. 启动 I/O 循环 ----------
     if (!io_loop_->start(control_frequency_hz_, rt_options_)) {
@@ -180,7 +186,7 @@ class NoetixBridgeNode final : public rclcpp::Node {
         });
 
     if (request == "enable") {
-      if (io_loop_->driveEnabled()) {
+      if (io_loop_->driveEnabled() && !io_loop_->dampingActive()) {
         return;  // 已经使能，直接返回
       }
       if (!io_loop_->enableDrive()) {
@@ -191,8 +197,31 @@ class NoetixBridgeNode final : public rclcpp::Node {
       return;
     }
 
-    // 多种停止/禁用命令
-    if (request == "disable" || request == "stop" ||
+    // 普通失能先阻尼三秒，重复请求不延长时间；不触发清错。
+    if (request == "disable") {
+      if (!io_loop_->driveEnabled() || io_loop_->dampingActive()) return;
+      if (io_loop_->beginDamping(8.0)) {
+        damping_end_ = std::chrono::steady_clock::now() + 3s;
+        RCLCPP_INFO(get_logger(), "Mode -> DAMPING; kp=0 kd=8; DISABLE in 3s");
+      } else {
+        io_loop_->disableDrive();
+        RCLCPP_ERROR(get_logger(), "Damping command failed; requested immediate DISABLE");
+      }
+      return;
+    }
+    // 人工清错只在完全失能时执行，不主动失能或重新使能。
+    if (request == "clear_errors") {
+      if (io_loop_->driveEnabled()) {
+        RCLCPP_WARN(get_logger(), "Motor error clear ignored: wait for fully DISABLED state");
+      } else if (io_loop_->clearMotorErrors()) {
+        RCLCPP_INFO(get_logger(), "Motor error clear request sent");
+      } else {
+        RCLCPP_WARN(get_logger(), "Motor error clear failed or is unsupported for robot=%s", robot_name_.c_str());
+      }
+      return;
+    }
+    // 急停始终立即关闭驱动，不等待阻尼阶段。
+    if (request == "stop" ||
         request == "estop" || request == "safe_stop") {
       const bool was_enabled = io_loop_->driveEnabled();
       if (!io_loop_->disableDrive()) {
@@ -203,15 +232,15 @@ class NoetixBridgeNode final : public rclcpp::Node {
       return;
     }
 
-    // lie/stand 是上层姿态模式，由 noetix_pose_mode_node 处理，
+    // stand 是上层姿态模式，由 noetix_pose_mode_node 处理，
     // 本节点只负责接收请求但不直接执行，因为上层会发布普通 LowCmd。
-    if (request == "lie" || request == "stand") {
+    if (request == "stand") {
       return;
     }
 
     RCLCPP_WARN(
         get_logger(),
-        "Unknown control request: %s (valid: enable, lie, stand, disable)",
+        "Unknown control request: %s (valid: enable, stand, disable, estop, clear_errors)",
         request.c_str());
   }
 
@@ -254,9 +283,10 @@ class NoetixBridgeNode final : public rclcpp::Node {
     }
 
     // 机器人状态：模式（使能/禁用）、连接、故障
-    low_state.status.mode = io_loop_->driveEnabled()
-        ? noetix_msgs::msg::RobotStatus::MODE_ENABLED
-        : noetix_msgs::msg::RobotStatus::MODE_DISABLED;
+    low_state.status.mode = io_loop_->dampingActive()
+        ? noetix_msgs::msg::RobotStatus::MODE_DAMPING
+        : io_loop_->driveEnabled() ? noetix_msgs::msg::RobotStatus::MODE_ENABLED
+                                  : noetix_msgs::msg::RobotStatus::MODE_DISABLED;
     low_state.status.connected = state.status.connected;
     low_state.status.enabled = io_loop_->driveEnabled();
     low_state.status.fault = state.status.fault;
@@ -318,7 +348,7 @@ class NoetixBridgeNode final : public rclcpp::Node {
     std_msgs::msg::String msg;
     msg.data =
         std::string("mode=") +
-        (io_loop_->driveEnabled() ? "ENABLED" : "DISABLED") +
+        (io_loop_->dampingActive() ? "DAMPING" : io_loop_->driveEnabled() ? "ENABLED" : "DISABLED") +
         " command=" + (io_loop_->hasCommand() ? "present" : "none") +
         " cycles=" + std::to_string(rt.cycles) +
         " overruns=" + std::to_string(rt.overruns) +
@@ -354,6 +384,8 @@ class NoetixBridgeNode final : public rclcpp::Node {
   }
 
   // ---------- 成员变量 ----------
+  rclcpp::TimerBase::SharedPtr damping_timer_;
+  std::chrono::steady_clock::time_point damping_end_{};
   RobotResourceInfo resource_;                 // 机器人资源信息
   std::string robot_name_;                     // 机器人名称
   double control_frequency_hz_{1000.0};        // 控制频率

@@ -22,6 +22,7 @@ class BumiBackend final : public HardwareBackend {
   bool write(const std::vector<ActuatorCmd>& command) override;
   bool enableActuators() override;
   bool disableActuators() override;
+  bool clearActuatorErrors() override;
   bool actuatorsEnabled() const override;
 
  private:

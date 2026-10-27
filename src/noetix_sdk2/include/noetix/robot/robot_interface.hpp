@@ -113,6 +113,8 @@ class RobotInterface {
   /** Runtime drive enable/disable. Communication remains started. */
   virtual bool enableActuators() = 0;
   virtual bool disableActuators() = 0;
+  // 清错不改变驱动使能状态，默认表示后端没有该接口。
+  virtual bool clearActuatorErrors() { return false; }
   virtual bool actuatorsEnabled() const = 0;
 
   /**

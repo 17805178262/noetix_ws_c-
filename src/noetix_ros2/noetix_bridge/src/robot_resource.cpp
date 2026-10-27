@@ -100,8 +100,7 @@ JointControlProfile loadPoseProfile(
         " sequence");
   }
 
-  // These are the previous RL LIE/STAND command defaults.  A robot may
-  // override any of them in its own robot.yaml.
+  // 姿态的默认增益和时间参数可由各机器人robot.yaml覆盖。
   profile.configured = true;
   const double kp = finiteScalar(control, "kp", 10.0, control_key);
   const double kd = finiteScalar(control, "kd", 0.5, control_key);
@@ -305,11 +304,28 @@ RobotResourceInfo loadRobotResource(const std::string& robot_name)
 
   info.imu_frame = frame(robot, "imu", "base_imu");
 
-  info.lie_control = loadPoseProfile(
+  info.enable_control = loadPoseProfile(
       root_yaml,
-      "lie_control",
-      "lie_joint_angles",
+      "enable_control",
+      "enable_joint_angles",
       info.joints);
+
+  // 未提供使能档位时使用低刚度默认增益，所有逻辑关节目标均为0。
+  if (!info.enable_control.configured) {
+    auto& profile = info.enable_control;
+    profile.configured = true;
+    profile.duration_s = 2.0;
+    profile.publish_hz = 100.0;
+    for (const auto& mapping : info.joints) {
+      JointModeResource command;
+      command.joint_name = mapping.joint_name;
+      command.actuator_name = mapping.actuator_name;
+      command.kp = 20.0;
+      command.kd = 5.0;
+      command.pos = 0.0;
+      profile.joints.push_back(std::move(command));
+    }
+  }
 
   info.stand_control = loadPoseProfile(
       root_yaml,

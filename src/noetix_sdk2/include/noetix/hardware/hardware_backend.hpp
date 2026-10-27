@@ -108,6 +108,9 @@ class HardwareBackend {
 
   virtual bool disableActuators() { return false; }
 
+  // 可选电机清错接口，未提供此能力的后端默认不支持。
+  virtual bool clearActuatorErrors() { return false; }
+
   virtual bool actuatorsEnabled() const
   {
     return false;

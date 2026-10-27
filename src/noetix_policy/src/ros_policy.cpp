@@ -14,7 +14,6 @@
 namespace noetix::policy {
 namespace {
 std::string share() { return ament_index_cpp::get_package_share_directory("noetix_policy"); }
-std::string model_path(Kind kind) { return share() + "/models/" + spec(kind).model; }
 std::string cleaned(std::string value) {
   auto begin = value.find_first_not_of(" \t\r\n");
   if (begin == std::string::npos)
@@ -26,7 +25,7 @@ std::string cleaned(std::string value) {
 }
 bool stop_request(const std::string& value) {
   return value == "disable" || value == "stop" || value == "estop" || value == "safe_stop" ||
-         value == "lie" || value == "stand";
+         value == "enable" || value == "stand";
 }
 double quantile(std::vector<double> data, double p) {
   std::sort(data.begin(), data.end());
@@ -38,12 +37,18 @@ double quantile(std::vector<double> data, double p) {
 double steady_seconds() {
   return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
-PolicyNode::PolicyNode(Kind kind, const rclcpp::NodeOptions& options, bool pending)
-    : Node(spec(kind).name + "_policy", options),
-      policy_(make_policy(spec(kind), kind == Kind::motion ?
-                              share() + "/motion/bumi_TOMBOY_50fps.npz" : "")),
-      inference_(policy_->config, policy_->inputs, load_model(policy_->config, model_path(kind))),
+// 从注册名称获得训练契约，资源配置只在此次构造时读取。
+PolicyNode::PolicyNode(const std::string& name, const rclcpp::NodeOptions& options, bool pending)
+    : PolicyNode(policy_spec(name), options, pending) {}
+PolicyNode::PolicyNode(Spec definition, const rclcpp::NodeOptions& options, bool pending)
+    : Node(definition.name + "_policy", options),
+      resources_(load_resources(declare_parameter<std::string>(
+          "joystick_config", share() + "/config/joystick.yaml"), definition.name,
+          definition.kind == Kind::motion)),
+      policy_(make_policy(std::move(definition), resources_.motion)),
+      inference_(policy_->config, policy_->inputs, load_model(policy_->config, resources_.model)),
       pending_(pending) {
+  const auto kind = policy_->config.kind;
   auto path = ament_index_cpp::get_package_share_directory("noetix_robots") + "/" +
               policy_->config.robot + "/config/robot.yaml";
   auto resources = YAML::LoadFile(path);
@@ -59,8 +64,7 @@ PolicyNode::PolicyNode(Kind kind, const rclcpp::NodeOptions& options, bool pendi
             "Invalid mapping direction/offset");
     mapping_.push_back(map);
   }
-  auto joystick =
-      declare_parameter<std::string>("joystick_config", share() + "/config/joystick.yaml");
+  auto joystick = get_parameter("joystick_config").as_string();
   auto config = YAML::LoadFile(joystick)["joystick"];
   joy_topic_ = config["topic"].as<std::string>();
   int i = 0;
@@ -82,7 +86,9 @@ PolicyNode::PolicyNode(Kind kind, const rclcpp::NodeOptions& options, bool pendi
   command_pub_ = create_publisher<noetix_msgs::msg::LowCmd>("/noetix/low_cmd", 1);
   status_pub_ = create_publisher<std_msgs::msg::String>("/noetix/policy_state", 10);
   RCLCPP_INFO(get_logger(), "C++ %s model: %s; sha256=%s; period=20ms", policy_->config.name.c_str(),
-              model_path(kind).c_str(), inference_.model->sha256.c_str());
+              resources_.model.c_str(), inference_.model->sha256.c_str());
+  if (!resources_.motion.empty())
+    RCLCPP_INFO(get_logger(), "Motion resource: %s", resources_.motion.c_str());
   RCLCPP_INFO(get_logger(), "C++ inference: backend=%s; selected_threads=%d; ORT=%s; %s",
               inference_.model->backend.c_str(), inference_.model->threads,
               OrtGetApiBase()->GetVersionString(), inference_.model->report.c_str());
@@ -106,7 +112,8 @@ void PolicyNode::start() {
             std::lock_guard<std::mutex> lock(self->data_mutex_);
             self->state_ = std::move(value);
           }
-          if (mode == noetix_msgs::msg::RobotStatus::MODE_DISABLED)
+          if (mode == noetix_msgs::msg::RobotStatus::MODE_DISABLED ||
+              mode == noetix_msgs::msg::RobotStatus::MODE_DAMPING)
             self->stop("Drive disabled");
         }
       },

@@ -22,10 +22,10 @@ namespace noetix_bridge {
  * Responsibilities are intentionally limited to three things:
  *   1) periodically read the backend;
  *   2) while enabled, write the latest full LowCmd exactly as received;
- *   3) write an all-zero MIT packet when disabled or before the first command.
+ *   3) write zero packets while disabled, or a prebuilt damping packet during soft disable.
  *
- * It does not implement control modes, command freshness, safety shaping,
- * pose ownership, arbitration, fallback holds, or policy logic.
+ * 阻尼输出由底层托管，防止上层旧指令覆盖；三秒结束时间由桥节点管理。
+ * 本层不组织策略观测、姿态轨迹或自动清错。
  */
 class IoLoop {
  public:
@@ -44,6 +44,9 @@ class IoLoop {
 
   bool enableDrive();
   bool disableDrive();
+  bool beginDamping(double kd);
+  bool dampingActive() const noexcept;
+  bool clearMotorErrors();
   bool driveEnabled() const noexcept;
 
   bool getLatestState(noetix::LowState& state) const;
@@ -69,12 +72,14 @@ class IoLoop {
 
   noetix::LowState state_;
   noetix::LowCmd zero_command_;
+  noetix::LowCmd damping_command_;
   noetix::LowCmd command_snapshot_;
   noetix::RealtimeBuffer<noetix::LowState> state_buffer_;
   noetix::RealtimeBuffer<noetix::LowCmd> command_buffer_;
 
   std::atomic<bool> running_{false};
   std::atomic<bool> drive_enabled_{false};
+  std::atomic<bool> damping_{false};
   std::atomic<bool> command_valid_{false};
   std::atomic<std::uint64_t> read_errors_{0};
   std::atomic<std::uint64_t> write_errors_{0};

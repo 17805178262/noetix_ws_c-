@@ -1,4 +1,4 @@
-# 公共遥控器配置：统一绑定底层模式请求和独立策略，不描述模型或观测空间。
+# 公共部署配置：按键、策略名称和资源路径集中配置；观测定义仍在各策略C++文件中。
 joystick:
   topic: /joy
   axes: {x: 1, y: 0, yaw: 3}
@@ -7,19 +7,26 @@ joystick:
   # 机器人底层模式：只发起控制请求，不填写策略模块。
   controls:
     - button: 6
-      action: disable
-    - button: 7
-      action: enable
+      action: disable  # kp=0、kd=8阻尼3秒后完全失能，不自动清错。
+    - buttons: [6, 7]
+      action: estop  # 立即失能。
     - button: 3
-      action: lie
+      action: clear_errors  # 完全失能后人工清错；后端SDK没有接口时不支持。
+    - button: 7
+      action: enable  # 使能成功后平滑进入enable_joint_angles姿态。
     - button: 2
       action: stand  # 请求robot.yaml中的默认站立姿态，不自动使能。
 
-  # 独立策略：只填写用户策略模块，不填写底层action。
+  # 独立策略：policy填写registry.cpp中的注册名称，model/motion支持package URI、绝对或配置旁相对路径。
+  # 每种策略只写一个条目；退出后更换资源，再次进入时重新读取，无需编译。
   policies:
     - button: 0
-      policy: noetix_policy.policies.walk
+      policy: walk
+      model: package://noetix_policy/models/walk.onnx
     - button: 4
-      policy: noetix_policy.policies.gmt
+      policy: gmt
+      model: package://noetix_policy/models/gmt.onnx
     - buttons: [4, 5]
-      policy: noetix_policy.policies.motion
+      policy: motion
+      model: package://noetix_policy/models/motion.onnx
+      motion: package://noetix_policy/motion/bumi_TOMBOY_50fps.npz

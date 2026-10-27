@@ -58,11 +58,12 @@ public:
                     RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000, "Ignoring invalid motion frame");
                     return;
                 }
+                const auto callback_start = std::chrono::steady_clock::now();
                 std::copy(pose.begin(), pose.end(), data_->qpos);
                 mj_forward(model_.get(), data_.get());
                 if (!received_) RCLCPP_INFO(get_logger(), "First motion frame received (%d joints)", preset_.num_joints);
                 received_ = true;
-                last_frame_ = std::chrono::steady_clock::now();
+                last_frame_ = callback_start;
             });
         RCLCPP_INFO(get_logger(), "robot=%s topic=%s model=%s", robot_.c_str(), topic.c_str(), path.c_str());
         width_ = width; height_ = height;

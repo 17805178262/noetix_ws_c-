@@ -11,6 +11,7 @@ Examples:
   ./start.sh real robot_name:=n3 use_rviz:=false
   ./start.sh real robot_name:=n3 device:=pico human_height:=1.78 visualize:=true
   ./start.sh sim robot_name:=n3 gui:=false
+  ./start.sh real robot_name:=n3 joystick_config:=/home/nano/deploy/joystick.yaml
 Press Ctrl+C to stop the processes started by this script.
 HELP
   exit 0

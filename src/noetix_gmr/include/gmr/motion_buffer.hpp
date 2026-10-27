@@ -71,7 +71,6 @@ public:
     void clear() {
         std::lock_guard<std::mutex> lk(mtx_);
         buf_.clear();
-        dropped_ = 0;
     }
 
     size_t length() const {
@@ -79,7 +78,6 @@ public:
         return buf_.size();
     }
 
-    int droppedCount() const { return dropped_.load(); }
 
     Eigen::VectorXd latestQpos() const {
         std::lock_guard<std::mutex> lk(mtx_);
@@ -184,7 +182,6 @@ private:
         if (buf_.size() > max_frames_) {
             size_t ovf = buf_.size() - max_frames_;
             buf_.erase(buf_.begin(), buf_.begin() + ovf);
-            dropped_ += int(ovf);
         }
     }
 
@@ -196,7 +193,6 @@ private:
     bool                offset_to_ground_ = false;  // default false，不影响mocap_server
     bool                consume_latest_frames_ = false;
     std::atomic<bool>   running_{false};
-    std::atomic<int>    dropped_{0};
     std::thread         thread_;
     mutable std::mutex  mtx_;
     std::deque<ProcessedFrame> buf_;

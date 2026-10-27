@@ -1,7 +1,7 @@
 // 中文说明：统一手柄切换器，保持Python版controls/policies配置、组合键优先和上升沿触发。
 // 切换器不订阅LowState或GMT、不组织策略观测；各PolicyNode独立接收自己的输入。
 // 模型在就绪前预加载；耗时构造在切换锁外，使用generation取消失能期间尚未完成的加载。
-// GMT仅在首条真实命令准备好后接管；退出或lie/stand时释放控制，不在重新使能时自动恢复策略。
+// GMT仅在首条真实命令准备好后接管；退出或站立时释放控制，使能请求转交默认姿态，不在重新使能时自动恢复策略。
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <rclcpp/create_timer.hpp>
 #include <set>
@@ -27,7 +27,7 @@ PolicySwitch::PolicySwitch(std::shared_ptr<rclcpp::Executor> executor,
       binding.target = item[field].as<std::string>();
       if (control)
         require(binding.target == "enable" || binding.target == "disable" ||
-                    binding.target == "lie" || binding.target == "stand",
+                    binding.target == "stand" || binding.target == "clear_errors" || binding.target == "estop",
                 "Unsupported control action");
       require(!(item["button"] && item["buttons"]), "Use either button or buttons");
       if (item["buttons"])
@@ -49,8 +49,9 @@ PolicySwitch::PolicySwitch(std::shared_ptr<rclcpp::Executor> executor,
   for (const auto& binding : bindings_)
     if (!binding.control && preloaded.insert(binding.target).second) {
       try {
-        auto value = spec(parse_kind(binding.target));
-        load_model(value, share + "/models/" + value.model);
+        auto value = policy_spec(binding.target);
+        auto resources = load_resources(config_, value.name, value.kind == Kind::motion);
+        load_model(value, resources.model);
       } catch (const std::exception& e) {
         RCLCPP_WARN(get_logger(), "Policy preload failed: %s: %s", binding.target.c_str(),
                     e.what());
@@ -164,8 +165,8 @@ void PolicySwitch::control(const std::string& action) {
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   if (closing_)
     return;
-  if (action != "enable")
-    clear(true);
+  // 使能、阻尼和急停由底层接管，不额外插入全零帧；清错不干扰正在运行的策略。
+  if (action != "clear_errors") clear(action == "stand");
   std_msgs::msg::String msg;
   msg.data = action;
   control_pub_->publish(msg);
@@ -183,12 +184,12 @@ void PolicySwitch::select(const std::string& name) {
   std::shared_ptr<PolicyNode> node;
   Kind kind;
   try {
-    kind = parse_kind(name);
+    kind = policy_spec(name).kind;
     rclcpp::NodeOptions options;
     options.parameter_overrides(
         {rclcpp::Parameter("use_sim_time", get_parameter("use_sim_time").as_bool()),
          rclcpp::Parameter("joystick_config", config_)});
-    node = std::make_shared<PolicyNode>(kind, options, kind == Kind::gmt);
+    node = std::make_shared<PolicyNode>(name, options, kind == Kind::gmt);
   } catch (const std::exception& e) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     if (!closing_ && generation == generation_)

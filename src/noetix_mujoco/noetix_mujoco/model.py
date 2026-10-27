@@ -115,8 +115,8 @@ def _merged_config(config_dir: Path, robot_name: str, override: str) -> dict:
             raise ValueError(f'render.{key} must be an integer in [{minimum}, {maximum}]')
     if result['actuator_mode'] not in ('explicit_pd','predictive_pd'):
         raise ValueError('actuator_mode must be explicit_pd or predictive_pd')
-    if result['initial_pose'] not in ('zero','stand','lie'):
-        raise ValueError('initial_pose must be zero, stand or lie')
+    if result['initial_pose'] not in ('zero','stand','enable'):
+        raise ValueError('initial_pose must be zero, stand or enable')
     return result
 
 
