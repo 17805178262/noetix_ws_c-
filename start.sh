@@ -34,7 +34,7 @@ cd "$TASK_WS_ROOT"
 
 if [[ $mode == sim ]]; then
   # exec保留launch的信号处理；其子节点随同一个launch正常退出。
-  exec ros2 launch noetix_mujoco sim.launch.py launch_policy:=true "$@"
+  exec ros2 launch noetix_gazebo sim.launch.py launch_policy:=true "$@"
 fi
 
 command -v setsid >/dev/null || { echo '[ERROR] setsid is not installed.' >&2; exit 1; }

@@ -25,7 +25,7 @@ joystick:
       model: package://noetix_policy/models/walk.onnx
     - button: 4
       policy: gmt
-      model: package://noetix_policy/models/gmt.onnx
+      model: package://noetix_policy/models/gmt_214000.onnx
     - buttons: [4, 5]
       policy: motion
       model: package://noetix_policy/models/motion.onnx

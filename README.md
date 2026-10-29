@@ -140,6 +140,22 @@ Gazebo 窗口中按住 **Ctrl+R 或 Ctrl+Shift+R** 吊起机器人，松开后�
 仿真的物理频率、底层控制频率、状态发布频率和接触参数通过 `sim_config`
 指定的 YAML 覆盖，不是直接的 launch 参数。
 
+Gazebo窗口默认限制为60FPS并关闭阴影；物理仍为1000Hz，目标实时率为1，策略每20ms仿真时间执行一次。
+GMT参考播放也按仿真时间推进，接收超时使用本机单调时钟；真机仍按现实时间50Hz运行。
+仿真变慢时，实时动捕与播放之间的延迟会增长；超过512帧缓存容量时，参考通过0.5秒过渡重新对时。
+不通过增大物理步长、减少求解迭代或加大ONNX线程数换取帧率。
+
+N3/Xsens建议只保留Gazebo一个显示窗口，`visualize:=false`关闭额外的GMR查看器：
+
+```bash
+ros2 launch noetix_gazebo sim.launch.py robot_name:=n3 launch_policy:=true \
+  device:=xsens xsens_port:=9763 human_height:=1.78 publish_hz:=50.0 visualize:=false
+```
+
+需要进一步减少显示开销时追加`gui:=false`；无Gazebo窗口时不能使用窗口悬吊快捷键。
+实时率明显低于1时，动作的现实时间节奏不能用于直接评价真机效果。
+
+
 ### 独立 MuJoCo 仿真后端
 
 MuJoCo 物理仿真与第5节的GMR参考查看器是两个不同入口。
@@ -289,6 +305,22 @@ ros2 run noetix_policy motion_policy --ros-args -p joystick_config:=/home/nano/d
 三个策略的目标周期为20ms，即50Hz；周期由策略源码设置。
 底层 `control_frequency_hz`、GMR `publish_hz` 和策略推理频率分别设置。
 
+GMT正常跟随时参考采样中心延后约600ms（520ms抖动缓冲加未来4帧80ms），
+Pico网络和IK处理延迟另计；策略仍按50Hz推理，本体反馈不延后。
+真机参考按现实时间推进；`use_sim_time:=true`时，参考播放与控制共用仿真时间，
+600ms是初始参考延迟，仿真不能实时运行时延迟会积累。
+已关闭`coasting`减速及80%～105%播放速度调整。
+已知前后帧之间的缺帧通过位置/关节插值和四元数球面插值补齐；
+后帧尚未收到时，参考窗口末端复用最近有效姿态，不预测未知动作。
+当前播放时刻没有可用参考，或连续1秒无有效输入时，保持最后姿态，不提前减速。
+重连、时钟重启或姿态跳变时保留旧缓存，新段做水平位移/偏航衔接和0.5秒姿态过渡。
+源时间覆盖80ms连续参考且当前播放时刻可用后开始恢复，整个参考窗口同步过渡，
+本体和动作历史保留。首轮进入策略仍等待初始窗口并使用2秒起步过渡。
+重新编译策略包并重启仿真后生效。
+帧顺序、重复帧、源时间缺口、分段帧间隔与插值均依据GMR消息中的`data[0]`。
+本机接收时间仅用于跨时钟对齐和连续1秒无有效输入的断流保护，不因到达空档单独重建参考段。
+当前`data[0]`来自GMR保留的SDK回调时间，尚未读取Pico原始采样时间戳；TCP重传不会自动提供采样时间。
+
 GMT默认使用CPU和2个ONNX计算线程，可在启动前明确设置：
 
 ```bash
@@ -349,7 +381,12 @@ GMR 发布到 `/noetix/gmt`；启动 GMR 本身不使能电机，也不自动激
 
 联合启动一般省略 `robot`；若填写，必须与自动选择的预设一致。
 独立启动则用 `robot` 选择 `n3`、`bumi3`、`g1`、`e1`。
-N3 内置 IK 配置目前支持 Pico，其他设备需要提供匹配的 `ik_config`。
+N3 内置 IK 配置支持 Pico 和 Xsens，其他设备需要提供匹配的 `ik_config`。
+
+GMR输入按FIFO逐帧执行IK，积压时保留未处理帧，不再取最新帧清空队列，也不再超过300帧就删除旧帧。
+不增加固定等待时间。输入长期快于IK处理能力时，待处理队列、帧龄和内存占用会增长。
+无效数据、IK失败和非递增时间戳仍会被拒绝；顺序消费保证的是已入队有效帧进入IK的顺序。
+当前发布端仍按`publish_hz`取最新IK结果，GMT缓冲沿用现有逻辑；顺序IK不代表每个结果都逐帧发布。
 
 ### 设备和 IK 参数
 
@@ -519,4 +556,70 @@ chmod +x build.sh start.sh
 ```bash
 ./build.sh --help
 ./start.sh --help
+```
+
+## 8. Xsens 动捕启动
+
+### 发送端设置
+
+在 Xsens MVN 中启用网络数据输出：目标 IP 填写运行 GMR 的电脑或板子的 IP，
+UDP 端口填写 `9763`，输出四元数姿态数据（协议类型 `MXTP02`）。
+接收端允许 UDP `9763` 入站；修改端口时两端保持一致。Xsens 不需要 Pico 的 PCService。
+
+### N3 独立重定向和动作查看
+
+```bash
+cd /home/byf/scy/noetix_ws_c++
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch noetix_gmr retarget.launch.py robot:=n3 device:=xsens \
+  xsens_port:=9763 human_height:=1.78 publish_hz:=50.0 visualize:=true
+```
+
+`human_height` 改为实际身高（米）；无显示环境使用 `visualize:=false`。
+此命令只启动 GMR 和可选的 MuJoCo 参考查看器，不启动物理仿真或控制真机。
+`publish_hz` 是参考发布频率上限，不改变 Xsens 发送频率和策略推理频率。
+内置 Xsens 配置还支持 `robot:=bumi3`、`robot:=g1`、`robot:=e1`，需与使用的策略机型一致。
+
+N3 重定向已使用 `GMR-CPP_e1jump_lowdpi1028.zip` 中的 N3 V3 MJCF、meshes、
+Xsens IK 配置和关节索引；默认自动选择，不需要填写 `model_path` 或 `ik_config`。
+Xsens 使用自适应地面估计：站立时对齐脚底，双脚离地时保留跳跃高度，带1 cm高度死区；
+`offset_to_ground:=false` 关闭贴地修正。人体缩放沿用原包的躯干/腿0.9、手臂0.8，
+再按 `human_height` 相对1.8米调整。头部没有IK目标，不随人体头部移动。
+N3/Pico重定向已移植`noetix_gmr.zip`中的`sim2real`优化路径，并适配当前N3 V3骨骼名称：
+接收完整24骨骼，前30个有效帧标定人体最低点至0.01米，之后冻结高度偏移；
+源帧间隔超过`frame_timeout`时，恢复帧按上一段的水平位置与偏航衔接。
+两阶段IK使用相同的第一表目标，按SE(3)位姿误差做全身联合求解；
+此路径关闭逐帧贴地、脚锁定、额外脚底高度修正和1000次首帧预热，
+`offset_to_ground`、`warmup_iterations`和读取端`normalize_initial_yaw`在此路径不生效。
+N3/Xsens仍使用原自适应地面估计；所有输入仍按FIFO顺序执行IK。
+初始化时先保持站立完成Pico标定；参数与算法对齐仍需实际设备验证动作质量。
+`noetix_robots/n3`的部署URDF和meshes已同步为同一套N3 V3资源；质量、惯量、
+关节结构、轴向和位置限位与GMR一致，部署端保留原关节名称、IMU和电机effort/velocity。
+脚底接触使用新包的12球支撑模型，GMT初始根高度估计也使用同一套腿部尺寸和支撑点。
+旧版0.01转子惯量的连杆惯量近似已移除，新GMR MJCF没有设置该armature。
+硬件标定和ONNX仍使用当前配置，模型资源对齐不代表已经验证训练模型与实机动力学匹配。
+输出仍为原有43个值、29关节的传输顺序。
+
+### 联合启动仿真或真机
+
+MuJoCo物理仿真和策略切换器：
+
+```bash
+./start.sh sim robot_name:=n3 device:=xsens \
+  xsens_port:=9763 human_height:=1.78 publish_hz:=50.0 visualize:=false
+```
+
+真机和策略切换器：
+
+```bash
+./start.sh real robot_name:=n3 use_rviz:=false device:=xsens \
+  xsens_port:=9763 human_height:=1.78 publish_hz:=50.0 visualize:=false
+```
+
+联合启动后仍需手柄使能、选择GMT。若无动作，核对MVN目标IP、UDP端口、输出类型，
+并查看参考频率：
+
+```bash
+ros2 topic hz /noetix/gmt
 ```

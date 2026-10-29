@@ -27,6 +27,7 @@ venv/
 .DS_Store
 
 # Local recordings, diagnostics and credentials
+MUJOCO_LOG.TXT
 /diagnostics/
 *.db3
 *.db3-shm

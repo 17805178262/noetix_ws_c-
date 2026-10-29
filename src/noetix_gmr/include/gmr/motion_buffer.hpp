@@ -34,7 +34,6 @@ public:
     void setPreprocessFn(PreprocessFn fn) { preprocess_fn_ = std::move(fn); }
     void setErrorFn(ErrorFn fn) { error_fn_ = std::move(fn); }
     void setOffsetToGround(bool v) { offset_to_ground_ = v; }
-    void setConsumeLatestFrames(bool v) { consume_latest_frames_ = v; }
 
     void seedSync(int n, FrameQueue& queue, gmr_mink::GMR* gmr) {
         for (int i = 0; i < n;) {
@@ -51,10 +50,8 @@ public:
         thread_ = std::thread([this, &queue, gmr] {
             while (running_) {
                 RawFrame raw;
-                const bool got = consume_latest_frames_
-                    ? queue.popLatest(raw, frame_timeout_)
-                    : queue.pop(raw, frame_timeout_);
-                if (!got) continue;
+                // 单线程按入队顺序逐帧求解，突发积压也不跳到最新帧。
+                if (!queue.pop(raw, frame_timeout_)) continue;
                 auto pf = retarget(raw, gmr);
                 if (pf) {
                     append(*pf);
@@ -191,7 +188,6 @@ private:
     ErrorFn             error_fn_;
     double              last_frame_time_ = 0;
     bool                offset_to_ground_ = false;  // default false，不影响mocap_server
-    bool                consume_latest_frames_ = false;
     std::atomic<bool>   running_{false};
     std::thread         thread_;
     mutable std::mutex  mtx_;

@@ -158,8 +158,8 @@ void PolicyNode::start() {
           },
           input);
   }
-  bool simulation = get_parameter("use_sim_time").as_bool();
-  if (policy_->config.kind == Kind::gmt && !simulation) {
+  simulation_ = get_parameter("use_sim_time").as_bool();
+  if (policy_->config.kind == Kind::gmt && !simulation_) {
     worker_ = std::thread([this] {
       auto period = std::chrono::milliseconds(20);
       auto deadline = std::chrono::steady_clock::now() + period;
@@ -176,6 +176,8 @@ void PolicyNode::start() {
     });
     RCLCPP_INFO(get_logger(), "GMT scheduler: monotonic control thread");
   } else {
+    if (policy_->config.kind == Kind::gmt)
+      RCLCPP_INFO(get_logger(), "GMT playback: simulation clock; stream timeout: monotonic clock");
     timer_ = rclcpp::create_timer(this, get_clock(), rclcpp::Duration::from_seconds(.02), [weak] {
       if (auto self = weak.lock())
         self->tick();
@@ -259,6 +261,10 @@ void PolicyNode::step(const noetix_msgs::msg::LowState& value) {
   }
   {
     std::lock_guard<std::mutex> lock(reference_mutex_);
+    // 仿真控制与参考共用ROS时间；真实到包时间和断流保护仍使用单调时钟。
+    if (simulation_)
+      if (auto* reference = policy_->reference())
+        reference->set_playback_time(stamp.seconds());
     policy_->build(state, command, steady_seconds());
   }
   double built = steady_seconds();

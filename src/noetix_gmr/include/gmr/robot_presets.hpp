@@ -24,15 +24,13 @@ static constexpr int BUMI3_JOINT_IDS_MAP[BUMI3_NUM_JOINTS] = {
     12, 18,  3,  7, 13, 19,  4,  8, 14, 20
 };
 
-// N3 transport order stays left/right interleaved. The n3_0905 MJCF tree is
-// torso/head, left arm (yaw/roll/pitch wrist), right arm, left leg, right leg.
-// Values index hinge qpos after the free root, not MuJoCo joint IDs.
-// Keep the published names synchronized with N3_CONTROLLER_JOINTS in policy.
+// N3 V3模型按双腿、腰部、双臂和头部排列；输出仍按现有GMT的左右交错顺序。
+// 索引来自新包joint_order.json，腕部保持yaw、pitch、roll的传输语义。
 static constexpr int N3_NUM_JOINTS = 29;
 static constexpr int N3_JOINT_IDS_MAP[N3_NUM_JOINTS] = {
-    17, 23,  0, 18, 24,  1,  3, 10, 19, 25,
-     2,  4, 11, 20, 26,  5, 12, 21, 27,  6,
-    13, 22, 28,  7, 14,  9, 16,  8, 15
+     0,  6, 12,  1,  7, 27, 13, 20,  2,  8,
+    28, 14, 21,  3,  9, 15, 22,  4, 10, 16,
+    23,  5, 11, 17, 24, 19, 26, 18, 25
 };
 
 struct RobotPreset {

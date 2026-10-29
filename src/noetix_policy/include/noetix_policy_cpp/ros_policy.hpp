@@ -51,7 +51,7 @@ class PolicyNode : public rclcpp::Node {
   std::condition_variable wake_;
   std::thread worker_;
   std::atomic<bool> running_{true}, ready_{false};
-  bool pending_ = false, announced_ = false, first_ready_ = false;
+  bool pending_ = false, announced_ = false, first_ready_ = false, simulation_ = false;
   uint64_t sequence_ = 0;
   noetix_msgs::msg::LowState::ConstSharedPtr state_;
   sensor_msgs::msg::Joy::ConstSharedPtr joy_;

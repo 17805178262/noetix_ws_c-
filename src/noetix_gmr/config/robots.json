@@ -27,9 +27,10 @@
     }
   },
   "n3": {
-    "model": "assets/n3/mjcf/n3_29dof.xml",
+    "model": "assets/n3/mjcf/n3.xml",
     "ik_configs": {
-      "pico": "config/ik_configs/xrobot_to_n3.json"
+      "pico": "config/ik_configs/xrobot_to_n3.json",
+      "xsens": "config/ik_configs/xsens_to_n3.json"
     }
   }
 }

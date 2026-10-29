@@ -232,8 +232,8 @@ void TrackingPolicy::build_tracking(const State& state, const std::array<Pose, 8
 //
 // 如果 state.position 已提供，则直接返回该位置。
 // 否则，通过双足腿部正运动学估计根高度：
-// - 根据左右腿各 6 个关节角，累积计算脚部中心位置；
-// - 利用重力方向 up 计算脚部中心在竖直方向上的支撑范围 extent；
+// - 根据N3 V3左右腿各6个关节角，累积计算踝关节位置；
+// - 利用重力方向up与脚底球形支撑点，计算脚底的最低位置；
 // - 取左右腿估计高度中的最大值作为根高度；
 // - 水平位置无法通过该函数恢复，因此返回 (0, 0, height)。
 V3 estimate_root_position(const State& state) {
@@ -260,8 +260,9 @@ V3 estimate_root_position(const State& state) {
 
     // offsets 是每条腿 6 个连杆的局部平移偏移。
     // 这些偏移按关节链依次累加，用于正运动学计算脚部中心。
-    std::array<V3, 6> offsets{V3(0, side * .071, .05215), V3(0, side * .054, -.0899),
-                              V3(0, 0, -.1269), V3(0, 0, -.1631), V3(0, 0, -.34), V3::Zero()};
+    std::array<V3, 6> offsets{V3(.000056967, side * .125, .059553), V3(-.0001, 0, -.09),
+                              V3(0, 0, -.135), V3(.0001, 0, -.1551),
+                              V3(0, -side * .00037979, -.34), V3::Zero()};
 
     // rotation 表示当前累积的连杆旋转矩阵，初始为单位阵。
     Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity();
@@ -291,17 +292,15 @@ V3 estimate_root_position(const State& state) {
                              (1 - double(std::cos(angle))) * (skew * skew));
     }
 
-    // 在关节链末端再加上脚部中心相对最后一个连杆的偏移，得到脚部中心位置。
-    V3 center = position + rotation * V3(side == 1 ? .04 : .0475, side * .0015, -.056);
-
-    // 计算脚部中心沿竖直方向的支撑范围：
-    // 将 up 投影到脚部局部旋转矩阵的各轴上，再与脚部尺寸做绝对值加权求和。
-    double extent =
-        (up.transpose() * rotation).cwiseAbs().dot(V3(side == 1 ? .11 : .1105, .0495, .01));
-
-    // 根高度估计为脚部中心竖直坐标加上支撑范围。
-    // 取左右腿中的最大值，作为更保守/更高的根高度估计。
-    height = std::max(height, -up.dot(center) + extent);
+    // 脚底12个半径5mm的球形支撑点与N3 V3部署URDF一致，不再使用旧版脚底包围盒。
+    const std::array<V3, 12> support{
+        V3(-.060, 0, -.060), V3(-.055, -.025, -.060), V3(-.055, .025, -.060),
+        V3(-.040, -.040, -.060), V3(-.040, .040, -.060),
+        V3(.010, -.043, -.060), V3(.010, .043, -.060),
+        V3(.075, -.050, -.060), V3(.075, .050, -.060),
+        V3(.140, -.035, -.0595), V3(.140, .035, -.0595), V3(.168, 0, -.052)};
+    for (const auto& point : support)
+      height = std::max(height, -up.dot(position + rotation * point) + .005);
   }
 
   // 该估计只能恢复竖直高度，水平位置未知，因此返回 (0, 0, height)。

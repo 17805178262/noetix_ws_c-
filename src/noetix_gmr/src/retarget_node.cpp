@@ -4,6 +4,7 @@
 #include "gmr/motion_buffer.hpp"
 #include "gmr/motion_output.hpp"
 #include "gmr/output_tuning.hpp"
+#include "gmr/sim2real_preprocessor.hpp"
 #include "readers/xsens_reader.hpp"
 #ifdef GMR_WITH_OPTITRACK
 #include "readers/optitrack_reader.hpp"
@@ -72,6 +73,11 @@ public:
             nonnegative("root_xy_scale", 1.0), nonnegative("max_joint_speed", 0.0), lock_tilt);
 
         solver_ = std::make_unique<gmr_mink::GMR>(xml, ik, height, damping, false);
+        sim2real_profile_ = solver_->sim2realProfile();
+        const bool effective_ground = sim2real_profile_ ? false : ground;
+        const int effective_warmup = sim2real_profile_ ? 0 : warmup;
+        auto pico_preprocessor = sim2real_profile_
+            ? std::make_shared<gmr::Sim2realPicoPreprocessor>(stale_timeout_) : nullptr;
         if (solver_->model()->nq != 7 + preset.num_joints)
             throw std::invalid_argument("Model qpos size does not match robot preset");
         // Fail at startup rather than silently skipping misnamed robot targets.
@@ -87,13 +93,13 @@ public:
             }
         }
         buffer_ = std::make_unique<gmr::MotionBuffer>(600, 0.02);
-        buffer_->setConsumeLatestFrames(true);
-        buffer_->setOffsetToGround(ground);
+        buffer_->setOffsetToGround(effective_ground);
         buffer_->setErrorFn([this](const std::string& error) {
             RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 5000,
                                   "Retarget frame rejected: %s", error.c_str());
         });
-        buffer_->setPreprocessFn([this, required_bones, spine, spine_deg, ground, warmup, warmed=false]
+        buffer_->setPreprocessFn([this, required_bones, spine, spine_deg, effective_ground, effective_warmup,
+                                  pico_preprocessor, warmed=false]
                                 (gmr::BodyMap& bones, double frame_time) mutable {
             for (const auto& name : required_bones)
                 if (!bones.count(name)) throw std::runtime_error("Required source bone missing: " + name);
@@ -103,6 +109,7 @@ public:
                     throw std::runtime_error("Invalid source bone pose: " + bone.first);
                 data.rot_wxyz.normalize();
             }
+            if (pico_preprocessor) pico_preprocessor->process(bones, frame_time);
             if (!spine.empty() && spine_deg != 0) {
                 auto it = bones.find(spine);
                 if (it != bones.end()) {
@@ -113,8 +120,8 @@ public:
                 }
             }
             if (!warmed) {
-                for (int i = 0; i < warmup && rclcpp::ok(); ++i)
-                    solver_->retarget(bones, ground, frame_time);
+                for (int i = 0; i < effective_warmup && rclcpp::ok(); ++i)
+                    solver_->retarget(bones, effective_ground, frame_time);
                 warmed = true;
             }
         });
@@ -129,6 +136,9 @@ public:
             std::chrono::duration<double>(1.0 / hz)), [this] { publishFrame(); });
         RCLCPP_INFO(get_logger(), "device=%s robot=%s topic=%s rate=%.1fHz model=%s IK=%s",
                     device_.c_str(), robot_.c_str(), publisher_->get_topic_name(), hz, xml.c_str(), ik.c_str());
+        if (sim2real_profile_)
+            RCLCPP_INFO(get_logger(), "Pico sim2real IK active: 30-frame ground calibration; "
+                        "per-frame grounding, foot lock, sole alignment and warmup disabled; FIFO input");
     }
     ~RetargetNode() override {
         if (timer_) timer_->cancel();
@@ -188,6 +198,7 @@ private:
             gmr::PicoReader::Config cfg;
             cfg.startup_timeout_sec = positive("pico_startup_timeout", 30.0);
             cfg.normalize_initial_yaw = parameter<bool>("normalize_initial_yaw", false);
+            if (sim2real_profile_) cfg.normalize_initial_yaw = false;
             return std::make_unique<gmr::PicoReader>(queue_, cfg);
         }
 #endif
@@ -231,6 +242,7 @@ private:
         last_published_time_ = frame->frame_time;
     }
     std::string device_, robot_;
+    bool sim2real_profile_ = false;
     double start_time_=0, stale_timeout_=0.5, interpolation_delay_=0;
     double last_published_time_=0;
     bool stale_=false;

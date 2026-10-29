@@ -120,10 +120,12 @@ void PicoReader::onStateJson(const char* json_str) {
                 std::chrono::steady_clock::now().time_since_epoch()).count();
         raw.frame_number = int(raw.stamp_ns / 1000000);
         for (size_t i = 0; i < kBoneNames.size(); ++i) {
-            auto it = cfg_.bone_name_map.find(kBoneNames[i]);
-            if (it == cfg_.bone_name_map.end()) continue;
             BodyData bd;
             transformUnityToRH(joints[i], bd.position, bd.rot_wxyz);
+            // 标定使用完整24骨骼的最低点；带前缀数据不会进入IK任务或ROS输出。
+            raw.body_data["__PicoRaw_" + kBoneNames[i]] = bd;
+            auto it = cfg_.bone_name_map.find(kBoneNames[i]);
+            if (it == cfg_.bone_name_map.end()) continue;
             raw.body_data[it->second] = bd;
         }
 

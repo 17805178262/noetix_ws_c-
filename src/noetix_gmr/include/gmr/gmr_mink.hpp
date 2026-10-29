@@ -96,11 +96,20 @@ public:
         nlohmann::json j; f >> j;
 
         human_root_name_ = j["human_root_name"].get<std::string>();
+        sim2real_profile_ = j.value("solver_profile", std::string{}) == "sim2real";
         ground_height_   = j["ground_height"].get<double>();
         foot_target_height_ = j.value("foot_target_height", 0.06);
         robot_ground_height_ = j.value("robot_ground_height", 0.0);
         align_robot_sole_ = j.value("align_robot_sole", false);
+        adaptive_grounding_ = j.value("adaptive_grounding", false);
+        ground_reference_alpha_ = std::clamp(j.value("ground_reference_alpha", 0.01), 0.0, 1.0);
+        ground_takeoff_step_ = std::max(0.0, j.value("ground_takeoff_step", 0.008));
+        ground_clearance_deadband_ = std::max(0.0, j.value("ground_clearance_deadband", 0.01));
         lock_planted_feet_ = j.value("lock_planted_feet", false);
+        if (sim2real_profile_) {
+            align_robot_sole_ = false;
+            lock_planted_feet_ = false;
+        }
         foot_contact_config_.height = foot_target_height_;
         foot_contact_config_.enter_height = j.value("foot_contact_enter_height", 0.025);
         foot_contact_config_.exit_height = j.value("foot_contact_exit_height", 0.055);
@@ -154,14 +163,16 @@ public:
         };
         parse("ik_match_table1", entries1_, pos_offsets1_, rot_offsets1_);
         parse("ik_match_table2", entries2_, pos_offsets2_, rot_offsets2_);
-        // 上半身独立求解，手臂目标误差和收敛次数都不能反过来改变根节点或腿部。
-        auto split_upper = [](std::vector<IKEntry>& entries, std::vector<IKEntry>& upper) {
-            for (const auto& entry : entries) if (entry.upper_body) upper.push_back(entry);
-            entries.erase(std::remove_if(entries.begin(), entries.end(),
-                [](const IKEntry& entry) { return entry.upper_body; }), entries.end());
-        };
-        split_upper(entries1_, upper_entries1_);
-        split_upper(entries2_, upper_entries2_);
+        // 新Pico路径按原包做全身联合求解，其他路径继续使用原有上半身独立求解。
+        if (!sim2real_profile_) {
+            auto split_upper = [](std::vector<IKEntry>& entries, std::vector<IKEntry>& upper) {
+                for (const auto& entry : entries) if (entry.upper_body) upper.push_back(entry);
+                entries.erase(std::remove_if(entries.begin(), entries.end(),
+                    [](const IKEntry& entry) { return entry.upper_body; }), entries.end());
+            };
+            split_upper(entries1_, upper_entries1_);
+            split_upper(entries2_, upper_entries2_);
+        }
 
         buildVelBounds();
 
@@ -190,17 +201,28 @@ public:
         if (!std::isfinite(frame_time))
             frame_time = std::chrono::duration<double>(
                 std::chrono::steady_clock::now().time_since_epoch()).count();
+        if (sim2real_profile_ && offset_to_ground)
+            throw std::invalid_argument("offset_to_ground is incompatible with sim2real profile");
         BodyMap scaled = scaleHumanData(human_data);
-        auto targets = [&](const auto& positions, const auto& rotations, auto& contacts) {
+        auto targets = [&](const auto& positions, const auto& rotations, auto& contacts, bool update_ground) {
             BodyMap result = applyGroundOffset(offsetHumanData(scaled, positions, rotations));
-            if (offset_to_ground) result = offsetToGround(result);
+            if (offset_to_ground) result = offsetToGround(result, update_ground);
             if (lock_planted_feet_) stabilizePlantedFeet(result, frame_time, contacts);
             return result;
         };
-        BodyMap offset = targets(pos_offsets1_, rot_offsets1_, foot_contacts1_);
+        BodyMap offset = targets(pos_offsets1_, rot_offsets1_, foot_contacts1_, true);
+        if (sim2real_profile_) {
+            // 两阶段共用第一张表生成的目标，不做逐帧贴地、脚锁定或额外根节点修正。
+            scaled_human_data_ = offset;
+            if (use_table1_) solveSim2realStage(offset, entries1_);
+            if (use_table2_) solveSim2realStage(offset, entries2_);
+            Eigen::VectorXd out(nq_);
+            for (int i = 0; i < nq_; ++i) out[i] = data_->qpos[i];
+            return out;
+        }
         // 两阶段使用各自的目标偏移；此前第二阶段实际上沿用了第一阶段的偏移。
         BodyMap offset2;
-        if (use_table2_) offset2 = targets(pos_offsets2_, rot_offsets2_, foot_contacts2_);
+        if (use_table2_) offset2 = targets(pos_offsets2_, rot_offsets2_, foot_contacts2_, false);
         scaled_human_data_ = use_table1_ ? offset : offset2;
 
         if (frame_count_ == 0) {
@@ -234,7 +256,9 @@ public:
         // leave a residual IK error.  Correct the free root from the actual
         // foot geometry after IK so crouching/kneeling cannot push the visual (and
         // published) robot through the ground.
-        if (offset_to_ground && align_robot_sole_) alignRobotFeetToGround();
+        if (offset_to_ground && align_robot_sole_)
+            alignRobotFeetToGround(robot_ground_height_ +
+                                   (adaptive_grounding_ ? tracked_ground_clearance_ : 0.0));
 
         Eigen::VectorXd out(nq_);
         for (int i = 0; i < nq_; ++i) out[i] = data_->qpos[i];
@@ -242,6 +266,8 @@ public:
     }
 
     const mjModel* model() const { return model_; }
+    // 返回是否启用Pico的sim2real预处理与求解路径。
+    bool sim2realProfile() const { return sim2real_profile_; }
 
     const BodyMap& getScaledHumanData() const { return scaled_human_data_; }
     void setGroundOffset(double g) { ground_offset_ = g; }
@@ -259,7 +285,18 @@ private:
     double foot_target_height_ = 0.06;
     double robot_ground_height_ = 0.0;
     bool align_robot_sole_ = false;
+    bool adaptive_grounding_ = false;
+    double ground_reference_alpha_ = 0.01;
+    double ground_takeoff_step_ = 0.008;
+    double ground_clearance_deadband_ = 0.01;
+    // 记录人体脚底的地面参考，双脚离地时保留真实抬升，不逐帧拉回地面。
+    bool have_ground_reference_ = false;
+    bool feet_airborne_ = false;
+    double ground_reference_z_ = 0.0;
+    double previous_lowest_z_ = 0.0;
+    double tracked_ground_clearance_ = 0.0;
     bool lock_planted_feet_ = false;
+    bool sim2real_profile_ = false;
     gmr::FootContact::Config foot_contact_config_;
     bool use_table1_ = false, use_table2_ = false;
 
@@ -341,21 +378,44 @@ private:
         return src;
     }
 
-    BodyMap offsetToGround(BodyMap src) const {
+    // 两阶段共用一次地面状态更新，避免同一输入帧被重复计入地面漂移估计。
+    BodyMap offsetToGround(BodyMap src, bool update_ground) {
         double lowest = std::numeric_limits<double>::infinity();
-        for (auto& [name,bd] : src) {
-            std::string lo = name;
-            std::transform(lo.begin(),lo.end(),lo.begin(),::tolower);
-            // Different mocap formats name the lowest tracked point
-            // differently: XRobot uses Foot, while FBX commonly uses ToeBase.
-            if (lo.find("foot") != std::string::npos ||
-                lo.find("toe") != std::string::npos ||
-                lo.find("ankle") != std::string::npos)
-                lowest = std::min(lowest, bd.position[2]);
-        }
-        if (!std::isinf(lowest))
-            for (auto& [name,bd] : src)
+        for (const auto& [name, bd] : src)
+            if (isFootTarget(name)) lowest = std::min(lowest, bd.position[2]);
+        if (!std::isfinite(lowest)) return src;
+        if (!adaptive_grounding_) {
+            for (auto& [name, bd] : src)
                 bd.position[2] = bd.position[2] - lowest + foot_target_height_;
+            return src;
+        }
+
+        if (update_ground || !have_ground_reference_) {
+            if (!have_ground_reference_) {
+                ground_reference_z_ = lowest;
+                previous_lowest_z_ = lowest;
+                have_ground_reference_ = true;
+            }
+            const double rise = lowest - previous_lowest_z_;
+            const double height = lowest - ground_reference_z_;
+            if (feet_airborne_) {
+                if (height <= foot_contact_config_.enter_height && rise <= ground_takeoff_step_)
+                    feet_airborne_ = false;
+            } else if (rise > ground_takeoff_step_ || height > foot_contact_config_.exit_height) {
+                feet_airborne_ = true;
+            }
+            // 下移的地面立即跟随；向上的缓慢漂移低速校正，起跳期间冻结地面。
+            if (!feet_airborne_) {
+                if (lowest < ground_reference_z_) ground_reference_z_ = lowest;
+                else ground_reference_z_ += ground_reference_alpha_ * (lowest - ground_reference_z_);
+            }
+            previous_lowest_z_ = lowest;
+            // 连续死区避免起落地状态切换时，根节点瞬间跳过检测阈值。
+            tracked_ground_clearance_ = std::max(0.0, lowest - ground_reference_z_ -
+                                                     ground_clearance_deadband_);
+        }
+        for (auto& [name, bd] : src)
+            bd.position[2] = bd.position[2] - ground_reference_z_ + foot_target_height_;
         return src;
     }
 
@@ -376,7 +436,7 @@ private:
         }
     }
 
-    void alignRobotFeetToGround() {
+    void alignRobotFeetToGround(double target_sole_z) {
         if (nq_ < 3 || model_->njnt == 0 || model_->jnt_type[0] != mjJNT_FREE)
             return;
 
@@ -429,7 +489,7 @@ private:
         }
 
         if (std::isfinite(sole_z)) {
-            data_->qpos[2] += robot_ground_height_ - sole_z;
+            data_->qpos[2] += target_sole_z - sole_z;
             mj_forward(model_, data_);
         }
     }
@@ -437,6 +497,231 @@ private:
     void clampJoints() {
         for (auto& b : vel_bounds_)
             data_->qpos[b.qadr] = std::clamp(data_->qpos[b.qadr], b.lo, b.hi);
+    }
+
+    // 构造向量的反对称矩阵，用于旋转和位姿的李代数运算。
+    static Eigen::Matrix3d skew(const Eigen::Vector3d& v) {
+        Eigen::Matrix3d out;
+        out << 0.0, -v.z(), v.y(),
+               v.z(), 0.0, -v.x(),
+              -v.y(), v.x(), 0.0;
+        return out;
+    }
+
+    // 将旋转矩阵转为最短旋转向量。
+    static Eigen::Vector3d so3Log(const Eigen::Matrix3d& rotation) {
+        Eigen::Quaterniond q(rotation);
+        q.normalize();
+        if (q.w() < 0.0) q.coeffs() *= -1.0;
+        Eigen::AngleAxisd aa(q);
+        return aa.axis() * aa.angle();
+    }
+
+    // 计算SO(3)左雅可比的逆，小角度使用级数避免数值消减。
+    static Eigen::Matrix3d so3LeftJacobianInverse(const Eigen::Vector3d& omega) {
+        const double theta = omega.norm();
+        const double theta2 = theta * theta;
+        double beta;
+        if (theta < 1e-4) {
+            beta = (1.0 / 12.0) *
+                (1.0 + theta2 / 60.0 *
+                (1.0 + theta2 / 42.0 * (1.0 + theta2 / 40.0)));
+        } else {
+            beta = (1.0 / theta2) *
+                (1.0 - 0.5 * theta / std::tan(0.5 * theta));
+        }
+        const Eigen::Matrix3d W = skew(omega);
+        return Eigen::Matrix3d::Identity() - 0.5 * W + beta * W * W;
+    }
+
+    // 将相对位姿转为六维平移与旋转误差。
+    static Eigen::Matrix<double,6,1> se3Log(const Eigen::Matrix3d& rotation,
+                                            const Eigen::Vector3d& translation) {
+        Eigen::Matrix<double,6,1> tangent;
+        const Eigen::Vector3d omega = so3Log(rotation);
+        const double theta2 = omega.squaredNorm();
+        const Eigen::Matrix3d W = skew(omega);
+        Eigen::Matrix3d vinv;
+        if (theta2 < 1e-10) {
+            vinv = Eigen::Matrix3d::Identity() - 0.5 * W + W * W / 12.0;
+        } else {
+            const double theta = std::sqrt(theta2);
+            const double half = 0.5 * theta;
+            vinv = Eigen::Matrix3d::Identity() - 0.5 * W
+                + (1.0 - 0.5 * theta * std::cos(half) / std::sin(half))
+                / theta2 * W * W;
+        }
+        tangent.head<3>() = vinv * translation;
+        tangent.tail<3>() = omega;
+        return tangent;
+    }
+
+    // 计算SE(3)雅可比中的平移与旋转耦合块。
+    static Eigen::Matrix3d se3Q(const Eigen::Matrix<double,6,1>& tangent) {
+        const double theta = tangent.tail<3>().norm();
+        const double theta2 = theta * theta;
+        double B, C, D;
+        if (theta2 < 1e-10) {
+            B = 1.0 / 6.0 + theta2 / 120.0;
+            C = -1.0 / 24.0 + theta2 / 720.0;
+            D = -1.0 / 60.0;
+        } else {
+            const double theta4 = theta2 * theta2;
+            B = (theta - std::sin(theta)) / (theta2 * theta);
+            C = (1.0 - 0.5 * theta2 - std::cos(theta)) / theta4;
+            D = (2.0 * theta - 3.0 * std::sin(theta)
+                + theta * std::cos(theta)) / (2.0 * theta4 * theta);
+        }
+        const Eigen::Matrix3d V = skew(tangent.head<3>());
+        const Eigen::Matrix3d W = skew(tangent.tail<3>());
+        const Eigen::Matrix3d VW = V * W;
+        const Eigen::Matrix3d WV = VW.transpose();
+        const Eigen::Matrix3d WVW = WV * W;
+        const Eigen::Matrix3d VWW = VW * W;
+        return 0.5 * V + B * (WV + VW + WVW)
+            - C * (VWW - VWW.transpose() - 3.0 * WVW)
+            + D * (WVW * W + W * WVW);
+    }
+
+    // 计算六维位姿误差的左雅可比逆。
+    static Eigen::Matrix<double,6,6>
+    se3LeftJacobianInverse(const Eigen::Matrix<double,6,1>& tangent) {
+        Eigen::Matrix<double,6,6> result =
+            Eigen::Matrix<double,6,6>::Identity();
+        if (tangent.tail<3>().squaredNorm() < 1e-10)
+            return result;
+        const Eigen::Matrix3d Jinv = so3LeftJacobianInverse(tangent.tail<3>());
+        result.topLeftCorner<3,3>() = Jinv;
+        result.bottomRightCorner<3,3>() = Jinv;
+        result.topRightCorner<3,3>() = -Jinv * se3Q(tangent) * Jinv;
+        return result;
+    }
+
+    // 在机器人目标连杆的局部坐标系中计算人体目标位姿误差。
+    Eigen::Matrix<double,6,1> sim2realError(
+        const BodyData& target, int body_id) const {
+        Eigen::Matrix3d R_current;
+        const mjtNum* xm = data_->xmat + body_id * 9;
+        for (int r = 0; r < 3; ++r)
+            for (int c = 0; c < 3; ++c) R_current(r,c) = xm[r*3+c];
+        const Eigen::Vector3d p_current(
+            data_->xpos[body_id*3], data_->xpos[body_id*3+1], data_->xpos[body_id*3+2]);
+        const Eigen::Quaterniond q_target(
+            target.rot_wxyz[0], target.rot_wxyz[1],
+            target.rot_wxyz[2], target.rot_wxyz[3]);
+        const Eigen::Matrix3d R_target = q_target.normalized().toRotationMatrix();
+        return se3Log(R_current.transpose() * R_target,
+                      R_current.transpose() * (target.position - p_current));
+    }
+
+    // 构建加权位姿误差QP，解出本轮关节增量并限制在当前模型的关节范围内。
+    void runSim2realStep(const BodyMap& targets, const std::vector<IKEntry>& entries) {
+        Eigen::MatrixXd H = Eigen::MatrixXd::Identity(nv_, nv_) * damping_;
+        Eigen::VectorXd c = Eigen::VectorXd::Zero(nv_);
+
+        for (const auto& entry : entries) {
+            const auto target = targets.find(entry.human_body);
+            if (target == targets.end() || entry.body_id < 0) continue;
+            const int bid = entry.body_id;
+
+            Eigen::Matrix<double,3,Eigen::Dynamic,Eigen::RowMajor> jp_world(3,nv_), jr_world(3,nv_);
+            mj_jacBody(model_, data_, jp_world.data(), jr_world.data(), bid);
+            Eigen::Matrix3d R_current;
+            const mjtNum* xm = data_->xmat + bid * 9;
+            for (int r = 0; r < 3; ++r)
+                for (int col = 0; col < 3; ++col) R_current(r,col) = xm[r*3+col];
+            Eigen::Matrix<double,6,Eigen::Dynamic> body_jacobian(6, nv_);
+            body_jacobian.topRows<3>() = R_current.transpose() * jp_world;
+            body_jacobian.bottomRows<3>() = R_current.transpose() * jr_world;
+
+            const Eigen::Quaterniond q_target(
+                target->second.rot_wxyz[0], target->second.rot_wxyz[1],
+                target->second.rot_wxyz[2], target->second.rot_wxyz[3]);
+            const Eigen::Matrix3d R_target = q_target.normalized().toRotationMatrix();
+            const Eigen::Vector3d p_current(
+                data_->xpos[bid*3], data_->xpos[bid*3+1], data_->xpos[bid*3+2]);
+            const Eigen::Matrix<double,6,1> error =
+                sim2realError(target->second, bid);
+            const Eigen::Matrix<double,6,1> inverse_error =
+                se3Log(R_target.transpose() * R_current,
+                       R_target.transpose() * (p_current - target->second.position));
+            const Eigen::Matrix<double,6,6> jlog =
+                se3LeftJacobianInverse(-inverse_error);
+            const Eigen::Matrix<double,6,Eigen::Dynamic> error_jacobian =
+                -jlog * body_jacobian;
+
+            Eigen::Matrix<double,6,1> weights;
+            weights << entry.pos_weight, entry.pos_weight, entry.pos_weight,
+                       entry.rot_weight, entry.rot_weight, entry.rot_weight;
+            const Eigen::Matrix<double,6,1> weighted_error =
+                weights.array() * (-error.array());
+            const Eigen::Matrix<double,6,Eigen::Dynamic> weighted_jacobian =
+                weights.asDiagonal() * error_jacobian;
+            const double mu = weighted_error.squaredNorm();
+            H += weighted_jacobian.transpose() * weighted_jacobian
+                + mu * Eigen::MatrixXd::Identity(nv_, nv_);
+            c -= weighted_jacobian.transpose() * weighted_error;
+        }
+
+        std::vector<double> lower(nv_, -1e30), upper(nv_, 1e30);
+        for (const auto& bound : vel_bounds_) {
+            const double q = data_->qpos[bound.qadr];
+            lower[bound.vadr] = 0.95 * (bound.lo - q);
+            upper[bound.vadr] = 0.95 * (bound.hi - q);
+        }
+        std::vector<double> H_flat(nv_ * nv_), c_flat(nv_);
+        for (int col = 0; col < nv_; ++col)
+            for (int row = 0; row < nv_; ++row)
+                H_flat[row + col * nv_] = H(row,col);
+        for (int i = 0; i < nv_; ++i) c_flat[i] = c[i];
+
+        DAQPProblem qp;
+        qp.n = nv_; qp.m = nv_; qp.ms = nv_;
+        qp.H = H_flat.data(); qp.f = c_flat.data();
+        qp.A = nullptr; qp.bupper = upper.data(); qp.blower = lower.data();
+        qp.sense = nullptr; qp.nh = 0; qp.break_points = nullptr;
+        std::vector<double> solution(nv_, 0.0), lambda(nv_, 0.0);
+        DAQPResult result;
+        result.x = solution.data(); result.lam = lambda.data();
+        DAQPSettings settings;
+        daqp_default_settings(&settings);
+        daqp_quadprog(&result, &qp, &settings);
+        if (result.exitflag <= 0)
+            throw std::runtime_error("sim2real IK QP failed, DAQP exitflag="
+                                     + std::to_string(result.exitflag));
+        Eigen::Map<Eigen::VectorXd> delta(solution.data(), nv_);
+        if (!delta.allFinite()) throw std::runtime_error("sim2real IK produced non-finite delta");
+        mj_integratePos(model_, data_->qpos, delta.data(), 1.0);
+        clampJoints();
+        mj_forward(model_, data_);
+    }
+
+    // 计算当前任务组的总位姿误差，供收敛判断使用。
+    double computeSim2realError(const BodyMap& targets,
+                                const std::vector<IKEntry>& entries) const {
+        double squared_norm = 0.0;
+        for (const auto& entry : entries) {
+            const auto target = targets.find(entry.human_body);
+            if (target == targets.end() || entry.body_id < 0) continue;
+            squared_norm += sim2realError(target->second, entry.body_id).squaredNorm();
+        }
+        return std::sqrt(squared_norm);
+    }
+
+    // 单阶段先求解一次，误差仍明显下降时最多追加十次迭代。
+    void solveSim2realStage(const BodyMap& targets,
+                            const std::vector<IKEntry>& entries) {
+        if (entries.empty()) return;
+        double current_error = computeSim2realError(targets, entries);
+        runSim2realStep(targets, entries);
+        double next_error = computeSim2realError(targets, entries);
+        int extra_iterations = 0;
+        while (current_error - next_error > 0.001 && extra_iterations < 10) {
+            current_error = next_error;
+            runSim2realStep(targets, entries);
+            next_error = computeSim2realError(targets, entries);
+            ++extra_iterations;
+        }
     }
 
     void runIKStep(const BodyMap& targets, const std::vector<IKEntry>& entries)
